@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 import math, random, mirscanModule
 
 # argv[1] is the query file (.wsl or .fax)
@@ -31,11 +34,11 @@ import math, random, mirscanModule
 # and a dictionary of those criteria scores is returned for each candidate.
 
 def mirscan(queryList,md,train=False,starts=False):
-    
+
     mirLength = 22  ## user may alter this value, but the variable must remain
 
 #####################################################
-## USER SHOULD NOT ALTER THIS BOX                
+## USER SHOULD NOT ALTER THIS BOX
 #####################################################
     all_data = []                                   #
     for n in range(len(queryList)):                 #
@@ -53,13 +56,13 @@ def mirscan(queryList,md,train=False,starts=False):
         args['al'] = args['seqs']                   #
                                                     #
 #####################################################
-        
+
 
         ### DEFINE args ENTRIES HERE ###
 
 
 #####################################################
-## USER SHOULD NOT ALTER THIS BOX                
+## USER SHOULD NOT ALTER THIS BOX
 #####################################################
                                                     #
         # get the scores for all of the possible (or specified) start positions
@@ -130,4 +133,3 @@ fdict = dict()
 ### in the case of overwriting attributes, it is important to maintain their specified
 ### requirements.
 ### ------------------------------------------------------------------------------
-

@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 # this script collects the scores earned by the foreground mirs and finds
 # the mean and standard dev. of the foreground score distribution.  it decides
 # where to cut the background.  this point will be the score which is one
@@ -38,7 +41,7 @@ else:
 
 
 # this list can be modified to change the behavior of score_cut.py, but here,
-# it is set to use the pre-computed (by mirscan) sum of all of the individual 
+# it is set to use the pre-computed (by mirscan) sum of all of the individual
 # feature scores, referred to as 'totscore' in mirscan's output.
 keys = ['totscore']
 

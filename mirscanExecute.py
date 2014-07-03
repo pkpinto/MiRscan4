@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 # This script applies a set of scoring criteria to a set of candidate miRNA hairpins
 # and outputs the resulting score sheet.
 #

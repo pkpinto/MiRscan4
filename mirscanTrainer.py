@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 # This script is used to generate a scoring matrix for evaluating miRNA candidates.
 #
 # It imports a set of foreground hairpins (a miRNA training set), a set of background
@@ -6,7 +9,7 @@
 # in the foreground set versus the background set to arrive at a score for that value, returned
 # by that feature.
 #
-#The scoring matrices, along with some additional info about
+# The scoring matrices, along with some additional info about
 # how they were generated, are printed out in '.matrix' format.  'train'
 # is the master function, and is called at the bottom of the script.
 #
