@@ -78,8 +78,8 @@ class string_feature:
     type = 'string'
     def kv(self,x):
         return x
-    def ex(self,*as):
-        return self.kv(self.fx(*as))
+    def ex(self,*args):
+        return self.kv(self.fx(*args))
     def pseudo(self,cd):
         new = dict()
         for k in cd.keys():
@@ -105,8 +105,8 @@ class number_feature:
         p = 1
         while p<len(self.kl) and self.kl[p]<=x: p+=1
         return str(self.kl[p-1])
-    def ex(self,*as):
-        return self.kv(self.fx(*as))
+    def ex(self,*args):
+        return self.kv(self.fx(*args))
     def pseudo(self,cd,iter=0):
         kernel = [.75,.125]
         new = dict()
@@ -137,7 +137,7 @@ class number_feature:
 # ------------------------------------------------------------------------------
 # Retrieves the background set filenames that are referred to in a .train file as
 # a list of strings.  paths are from the current directory.
-# ------------------------------------------------------------------------------    
+# ------------------------------------------------------------------------------
 def getBackgroundFiles(trainfile):
     trainfileDir = '/'.join(trainfile.split('/')[:-1])
     def makeDir(otherPath):
@@ -150,7 +150,7 @@ def getBackgroundFiles(trainfile):
         if len(line)!=0 and line[0]=='b': bgFiles.append(line.split()[1])
     infile.close()
     return map(makeDir, bgFiles)
-            
+
 
 
 
@@ -175,7 +175,7 @@ def getBackgroundFiles(trainfile):
 #      with a ">" and then has a name for the candidate found on the following lines.
 #      each of the following lines has an organism key (like the ones in ol), then a tab,
 #      then a sequence.
-# .train -> this file format 
+# .train -> this file format
 def get_queries(filename):
     if filename.split('.')[-1]=='train': return parseTrain(filename)
     elif filename.split('.')[-1]=='fax': return parseFax(filename)
@@ -192,7 +192,7 @@ def get_queries(filename):
 # indicating the start position of the mature miRNA's 5p end in the corresponding
 # hairpin sequence (indexed from 0).  the index of a candidate in the first returned
 # list matches the index of the start value dictionary in the second list.
-# ------------------------------------------------------------------------------    
+# ------------------------------------------------------------------------------
 def parseTrain(trainfile,starts=False):
     infile = open(trainfile)
     uToT = string.maketrans('U','T')
@@ -233,8 +233,8 @@ def parseTrain(trainfile,starts=False):
 
 
 # ------------------------------------------------------------------------------
-# Retrieves the miRNA hairpin Candidates documented in a .fax file. 
-# ------------------------------------------------------------------------------    
+# Retrieves the miRNA hairpin Candidates documented in a .fax file.
+# ------------------------------------------------------------------------------
 def parseFax(faxfile):
     infile = open(faxfile)
     uToT = string.maketrans('U','T')
@@ -263,7 +263,7 @@ def parseFax(faxfile):
 # ------------------------------------------------------------------------------
 # writes a set of the miRNA hairpin Candidates to a .fax file.  if filename=='stdout',
 # writes to standard out.
-# ------------------------------------------------------------------------------    
+# ------------------------------------------------------------------------------
 def writeFax(candList,filename):
     __checkCandidates(candList)
     if filename.lower()=='stdout': out = sys.stdout
@@ -273,15 +273,15 @@ def writeFax(candList,filename):
         for org in c.orgList():
             out.write(org+'\t'+c.seq(org)+'\n')
     if filename.lower()!='stdout': out.close()
-    
-    
+
+
 
 # ------------------------------------------------------------------------------
 # This is an internally-used test of candidate lists that are returned when parsing
 # a file that contains them.  the candidates from a file should each have hairpins
 # from the same set of organisms, and those orgs should be referred to with the same
 # key strings.
-# ------------------------------------------------------------------------------    
+# ------------------------------------------------------------------------------
 def __checkCandidates(candList):
     if len(candList) > 0:
         initOrgs = candList[0].orgList()
@@ -459,7 +459,7 @@ def get_folds(sl):
 
 # make_bp_dicts
 # ------------------------------------------------------------------------------
-# args: fold: string which is a bracket-notation RNA secondary structure 
+# args: fold: string which is a bracket-notation RNA secondary structure
 # returns: bpl: a dictionary whose keys are integer positions in the secondary structure,
 #               and whose values are 1 if the character in that positon is "(", 0 otherwise
 #          bpr: a dictionary whose keys are integer positions in the secondary structure,
@@ -507,9 +507,11 @@ def make_bp_dicts(fold):
 def pick_side(folds,seqsoral,pos,le):
     def pick_side_help(fold,seq,pos,le,r):
         def count_along(zp,zq,limit,step,seq):
-            while zq<limit:
+            while zq<limit and zp<len(seq):
+                if zp >=len(seq): print len(seq), zp
                 if seq[zp]!='-': zq+=1
                 zp+=step
+            if  zp==len(seq): zp = zp - 1
             return zp
         def edge_helper(pos,p,el,er,r,le):
             a = pos - el - seq[el:pos].count('-') - 2
