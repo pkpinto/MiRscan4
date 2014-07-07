@@ -1,4 +1,5 @@
-import math, random, mirscanModule
+import math, random
+import mirscanModule
 
 # argv[1] is the query file (.wsl or .fax)
 # argv[2] is the scoring matrix file
@@ -31,11 +32,11 @@ import math, random, mirscanModule
 # and a dictionary of those criteria scores is returned for each candidate.
 
 def mirscan(queryList,md,train=False,starts=False):
-    
+
     mirLength = 22  ## user may alter this value, but the variable must remain
 
 #####################################################
-## USER SHOULD NOT ALTER THIS BOX                
+## USER SHOULD NOT ALTER THIS BOX
 #####################################################
     all_data = []                                   #
     for n in range(len(queryList)):                 #
@@ -53,7 +54,7 @@ def mirscan(queryList,md,train=False,starts=False):
         args['al'] = get_alignment(args['seqs'])    #
                                                     #
 #####################################################
-        
+
 
         # prepare the basepair dictionaries
         args['bpll'],args['bprl'],args['bpdl'],args['bulgesl'] = [],[],[],[]
@@ -71,7 +72,7 @@ def mirscan(queryList,md,train=False,starts=False):
 
 
 #####################################################
-## USER SHOULD NOT ALTER THIS BOX                
+## USER SHOULD NOT ALTER THIS BOX
 #####################################################
                                                     #
         # get the scores for all of the possible (or specified) start positions
@@ -105,9 +106,6 @@ def mirscan(queryList,md,train=False,starts=False):
 
 
 
-
-
-
 # get_alignment
 # ------------------------------------------------------------------------------
 # args: two sequences
@@ -125,6 +123,37 @@ def get_alignment(sa):
 # number_feature.  the keys are the names of the criteria.  if the same function is used
 # by multiple criteria, then there is a reference for each.
 fdict = dict()
+
+
+
+
+### PROTOTYPE fdict ENTRY:
+### ------------------------------------------------------------------------------
+### First, give the criteria a name (this should be a string, 'nameOfCriteria' below) and
+### define it as either a number_feature or a string_feature (these are implemented in
+### mirscanModule):
+#
+# fdict[nameOfCriteria] = mirscanModule.number_feature()
+#
+### Now, add the two required attributes of the feature: first, a function that measures some aspect
+### of the miRNA candidate and returns an appropriate value (must be a string for a string_feature
+### and must be a number for a number_feature); and second, a list of all possible values that
+### can be returned by the defined function (tip: it may be useful to define the acceptable return
+### values first, and then use that list in the function to make sure that the return value is
+### acceptable; this will be especially helpful for a number_feature, where generating the return
+### value may involve rounding some other quantitative measure.  note also that, if you fail to do
+### this, that number_feature has a rounding function that it will apply automatically).
+#
+# fdict[nameOfCriteria].kl = listOfKeys
+# fdict[nameOfCriteria].fx = function that takes 'self' and the argument dictionary that is
+#                            defined in the 'mirscan' function as its two arguments.
+#
+### note that any other set of attributes may be added to these instances, or the
+### automatically-assigned attributes may be overwritten.  in the case of adding
+### attributes, it is important to respect the namespace of the required attributes;
+### in the case of overwriting attributes, it is important to maintain their specified
+### requirements.
+### ------------------------------------------------------------------------------
 
 
 
@@ -182,7 +211,7 @@ def method5_pre_help(fold,bpd):
     bulgel = []
     for n in range(foldlength):
         bulgel.append(n)
-        if fold[n]!='.': 
+        if fold[n]!='.':
             bulgesl.append(bulgel)
             bulgel = []
     bulgel.append(foldlength)
@@ -266,7 +295,7 @@ def method6_G(self,ar,give_edges=False):
         if not(beginning):
             def edge_helper(pos,p,el,er,seq,le,side):
                 a = pos - el - 2
-                b = er - p                
+                b = er - p
                 if side=='right':
                     leng = a - b - le
                     return pos-(leng-2),pos
@@ -395,7 +424,7 @@ def complexity_pre_help(seq,level_max):
 #       level_max: integer; maximum number of steps into the tree that will be taken
 #            (this is the same as the max repeated word length)
 #       sl: integer; length of 'seq'
-#       build: optional; if not false, updates (mutates) 'tree' to include the whole 
+#       build: optional; if not false, updates (mutates) 'tree' to include the whole
 #            sequence up until the new position
 # returns: integer corresponding to the number of steps that have been taken into the
 #               tree (ie the number of steps forward that 'pos' should be advanced in
@@ -571,6 +600,3 @@ def method9_B(self,ar):
 fdict['loop_vs_mir'] = mirscanModule.number_feature()
 fdict['loop_vs_mir'].kl = map(lambda a: .05*a, range(-20,21))
 fdict['loop_vs_mir'].fx = method343
-
-
-            

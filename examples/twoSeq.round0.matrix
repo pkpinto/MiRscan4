@@ -1,5 +1,5 @@
 # number = 0, fcount = 24
-# training file: sampleFiles/twoSeq.round0.train
+# training file: examples/twoSeq.round0.train
 # Wed Oct 31 21:03:46 2007
 # org keys:	dm2	dp3
 loop_dis_G

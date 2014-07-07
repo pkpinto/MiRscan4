@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-import math, random, mirscanModule
+import math, random
+import mirscanModule
 
 # argv[1] is the query file (.wsl or .fax)
 # argv[2] is the scoring matrix file

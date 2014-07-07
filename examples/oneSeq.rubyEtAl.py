@@ -1,4 +1,5 @@
-import math, random, mirscanModule
+import math, random
+import mirscanModule
 
 # argv[1] is the query file (.wsl or .fax)
 # argv[2] is the scoring matrix file
@@ -31,11 +32,11 @@ import math, random, mirscanModule
 # and a dictionary of those criteria scores is returned for each candidate.
 
 def mirscan(queryList,md,train=False,starts=False):
-    
+
     mirLength = 22  ## user may alter this value, but the variable must remain
 
 #####################################################
-## USER SHOULD NOT ALTER THIS BOX                
+## USER SHOULD NOT ALTER THIS BOX
 #####################################################
     all_data = []                                   #
     for n in range(len(queryList)):                 #
@@ -53,7 +54,7 @@ def mirscan(queryList,md,train=False,starts=False):
         args['al'] = args['seqs']                   #
                                                     #
 #####################################################
-        
+
 
         # prepare the basepair dictionaries
         args['bpll'],args['bprl'],args['bpdl'],args['bulgesl'] = [],[],[],[]
@@ -71,7 +72,7 @@ def mirscan(queryList,md,train=False,starts=False):
 
 
 #####################################################
-## USER SHOULD NOT ALTER THIS BOX                
+## USER SHOULD NOT ALTER THIS BOX
 #####################################################
                                                     #
         # get the scores for all of the possible (or specified) start positions
@@ -105,6 +106,12 @@ def mirscan(queryList,md,train=False,starts=False):
 
 
 
+
+# fdict
+# this is a dictionary of functions.  each "function" is an instance of class string_ or
+# number_feature.  the keys are the names of the criteria.  if the same function is used
+# by multiple criteria, then there is a reference for each.
+fdict = dict()
 
 
 
@@ -140,19 +147,6 @@ def mirscan(queryList,md,train=False,starts=False):
 
 
 
-
-
-# fdict
-# this is a dictionary of functions.  each "function" is an instance of class string_ or
-# number_feature.  the keys are the names of the criteria.  if the same function is used
-# by multiple criteria, then there is a reference for each.
-fdict = dict()
-
-
-
-
-
-            
 # method5_alt_D 'bulge_sym_D'
 # ------------------------------------------------------------------------------
 # args: ar: arguements dictionary 'args' defined in mirscan.mirscan
@@ -206,7 +200,7 @@ def method5_pre_help(fold,bpd):
     bulgel = []
     for n in range(foldlength):
         bulgel.append(n)
-        if fold[n]!='.': 
+        if fold[n]!='.':
             bulgesl.append(bulgel)
             bulgel = []
     bulgel.append(foldlength)
@@ -290,7 +284,7 @@ def method6_G(self,ar,give_edges=False):
         if not(beginning):
             def edge_helper(pos,p,el,er,seq,le,side):
                 a = pos - el - 2
-                b = er - p                
+                b = er - p
                 if side=='right':
                     leng = a - b - le
                     return pos-(leng-2),pos
@@ -419,7 +413,7 @@ def complexity_pre_help(seq,level_max):
 #       level_max: integer; maximum number of steps into the tree that will be taken
 #            (this is the same as the max repeated word length)
 #       sl: integer; length of 'seq'
-#       build: optional; if not false, updates (mutates) 'tree' to include the whole 
+#       build: optional; if not false, updates (mutates) 'tree' to include the whole
 #            sequence up until the new position
 # returns: integer corresponding to the number of steps that have been taken into the
 #               tree (ie the number of steps forward that 'pos' should be advanced in
