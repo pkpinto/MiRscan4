@@ -20,7 +20,7 @@ parser.add_argument(dest='matrixFile',
                     help='the scoring matrix file (.matrix)')
 
 parser.add_argument('-o', dest='scoreFile', default='stdout',
-                    help='the output score sheet file (.scr)')
+                    help='the output score sheet file (.scr) (default: stdout)')
 
 args = parser.parse_args()
 

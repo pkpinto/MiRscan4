@@ -8,10 +8,11 @@ et al. 2003a] and vertebrates [Lim et al. 2003b]. More recently an updated
 version has been release and applied to the detection of Drosophila miRNAs
 [Ruby et al. 2007].
 
-Details on the format of all necessary files is presented in:
+Details on the format of all necessary files are presented in:
 http://bartellab.wi.mit.edu/softwareDocs/MiRscan3/FileFormats.html
 
-The most recent version of the code, together with documentation, is found at:
+The most recent unforked version of the code, along with documentation, can be 
+found at:
 http://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html
 
 - [Lim et al. 2003a] doi:10.1101/gad.1074403

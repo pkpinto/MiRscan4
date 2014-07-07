@@ -1,9 +1,6 @@
 import math, random
 import mirscanModule
 
-# argv[1] is the query file (.wsl or .fax)
-# argv[2] is the scoring matrix file
-# argv[3] is the output file
 
 # mirscan
 # ------------------------------------------------------------------------------
