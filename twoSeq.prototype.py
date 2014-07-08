@@ -1,8 +1,6 @@
-import math, random, mirscanModule
+import math, random
+import mirscanModule
 
-# argv[1] is the query file (.wsl or .fax)
-# argv[2] is the scoring matrix file
-# argv[3] is the output file
 
 # mirscan
 # ------------------------------------------------------------------------------
@@ -31,11 +29,11 @@ import math, random, mirscanModule
 # and a dictionary of those criteria scores is returned for each candidate.
 
 def mirscan(queryList,md,train=False,starts=False):
-    
+
     mirLength = 22  ## user may alter this value, but the variable must remain
 
 #####################################################
-## USER SHOULD NOT ALTER THIS BOX                
+## USER SHOULD NOT ALTER THIS BOX
 #####################################################
     all_data = []                                   #
     for n in range(len(queryList)):                 #
@@ -53,12 +51,12 @@ def mirscan(queryList,md,train=False,starts=False):
         args['al'] = get_alignment(args['seqs'])    #
                                                     #
 #####################################################
-        
+
 
         ### DEFINE args ENTRIES HERE ###
 
 #####################################################
-## USER SHOULD NOT ALTER THIS BOX                
+## USER SHOULD NOT ALTER THIS BOX
 #####################################################
                                                     #
         # get the scores for all of the possible (or specified) start positions

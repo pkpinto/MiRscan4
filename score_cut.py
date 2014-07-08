@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 # this script collects the scores earned by the foreground mirs and finds
 # the mean and standard dev. of the foreground score distribution.  it decides
 # where to cut the background.  this point will be the score which is one
@@ -6,41 +9,8 @@
 # .wsl files in a new directory with those sequences that pass the threshold
 # score.
 
-# argv[1] is the foreground .scr file
-# argv[2] is the background .scr file
-# argv[3] (optional) is the .fax background file that was being scored.
-# argv[4] (optional) is the new .fax file to which the passing entries will
-#         be written.  if 'stdout', .fax-format text will be written to
-#         standard out.
-
-import sys, math, mirscanModule
-
-
-foregroundScores = sys.argv[1]
-backgroundScores = sys.argv[2]
-if foregroundScores.split('.')[-1]!='scr':
-    raise ValueError("foreground scores must be '.scr' format, not "+foregroundScores)
-if backgroundScores.split('.')[-1]!='scr':
-    raise ValueError("background scores must be '.scr' format, not "+backgroundScores)
-
-if len(sys.argv)>4:
-    makeNewFile = True
-    sourceFile = sys.argv[3]
-    outfileName = sys.argv[4]
-    if sourceFile.split('.')[-1]!='fax' and sourceFile.split('.')!='train':
-        raise ValueError("background source file must be '.fax' format, not "+sourceFile)
-    if outfileName.split('.')[-1]!='fax':
-        raise ValueError("filtered output file must be '.fax' format, not "+outfileName)
-else:
-    makeNewFile = False
-
-
-
-
-# this list can be modified to change the behavior of score_cut.py, but here,
-# it is set to use the pre-computed (by mirscan) sum of all of the individual 
-# feature scores, referred to as 'totscore' in mirscan's output.
-keys = ['totscore']
+import sys, math, argparse
+import mirscanModule
 
 
 # filtered_score
@@ -103,32 +73,63 @@ def get_cands_above_x(x,mirs,kl):
 
 
 
+parser = argparse.ArgumentParser(description='MiRscan3 score cut',
+            epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
+
+parser.add_argument(dest='foregroundScores',
+                    help='the foreground score sheet file (.scr)')
+parser.add_argument(dest='backgroundScores',
+                    help='the background score sheet file (.scr)')
+
+parser.add_argument('--query_in', dest='queryFileIn',
+                    help='the existing query file (.train or .fax)')
+parser.add_argument('--query_out', dest='queryFileOut', default='stdout',
+                    help='the filtered query file (.fax) (default: stdout)')
+
+args = parser.parse_args()
+
+if args.foregroundScores.split('.')[-1]!='scr':
+    raise ValueError('foreground score sheets must be ".scr"')
+if args.backgroundScores.split('.')[-1]!='scr':
+    raise ValueError('background score sheets must be ".scr"')
+
+if args.queryFileIn:
+    if args.queryFileIn.split('.')[-1]!='train' and args.queryFileIn.split('.')[-1]!='fax':
+        raise ValueError('query file must be ".train" or ".fax" format')
+    if args.queryFileOut.lower()!='stdout' and args.queryFileOut.split('.')[-1]!='fax':
+        raise ValueError('outfile must be ".fax".')
+
+
+# this list can be modified to change the behavior of score_cut.py, but here,
+# it is set to use the pre-computed (by mirscan) sum of all of the individual
+# feature scores, referred to as 'totscore' in mirscan's output.
+keys = ['totscore']
 
 
 # below, the score distribution for the foreground set is analyzed to
 # select a score threshold ('cut'), and the candidates are filtered for
-# having scores above the threshold ('babove' are those candidtates' score
+# having scores above the threshold ('babove' are those candidates' score
 # dictionaries).
-fs = mirscanModule.get_scores(foregroundScores,keys)
-bs = mirscanModule.get_scores(backgroundScores,keys)
+fs = mirscanModule.get_scores(args.foregroundScores,keys)
+bs = mirscanModule.get_scores(args.backgroundScores,keys)
 fmean,fstdev,fmin = find_stats(fs,keys)
 cut = fmin - fstdev/2
 babove = get_cands_above_x(cut,bs,keys)
 
 
-print '\t'.join(['fore','mean='+str(fmean),'stdev='+str(fstdev)])
-print 'cut = ',cut
-print 'candidates above minimum: ',len(babove),' of ',len(bs)
+print('\t'.join(['fore','mean='+str(fmean),'stdev='+str(fstdev)]))
+print('cut = ' + str(cut))
+print('candidates above minimum: ' + str(len(babove)) + ' of ' + str(len(bs)))
 
 
 # if the appropriate arguments are provided, the passing candidates will
 # be put into a new .fax file.
-if makeNewFile:
-    candList = mirscanModule.get_queries(sourceFile)
+if args.queryFileIn:
+    candList = mirscanModule.get_queries(args.queryFileIn)
     passedNames = dict()
     for b in babove: passedNames[b['name']] = None
     passedList = filter(lambda c: passedNames.has_key(c.name()), candList)
     if len(passedList)!=len(babove):
         raise ValueError("lengths of scored ("+str(len(babove))+") and queried ("+\
                          str(len(passedList))+") candidates don't match after filtering.")
-    mirscanModule.writeFax(passedList,outfileName)
+    mirscanModule.writeFax(passedList,args.queryFileOut)

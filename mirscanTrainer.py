@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 # This script is used to generate a scoring matrix for evaluating miRNA candidates.
 #
 # It imports a set of foreground hairpins (a miRNA training set), a set of background
@@ -6,54 +9,33 @@
 # in the foreground set versus the background set to arrive at a score for that value, returned
 # by that feature.
 #
-#The scoring matrices, along with some additional info about
+# The scoring matrices, along with some additional info about
 # how they were generated, are printed out in '.matrix' format.  'train'
 # is the master function, and is called at the bottom of the script.
-#
-# argv[1] is the .train training file with the foreground set and the background files
-# argv[2] is the mirscan script that will be used for training
-# argv[3] is the number of randomly-selected background seqs which will contribute to the score
-#         (if set to 0, all background sequences will contribute)
-# argv[4] is a .matrix file with the scoring matrix (optional; printed to stdout if left blank) 
 
-
-import math, sys, random, time, mirscanModule
-
-
-trainFile = sys.argv[1]
-criteriaFile = sys.argv[2]
-number = int(sys.argv[3])
-matrixFile = sys.argv[4]
-
-# check that args corresponding to filenames have the proper extensions.
-if trainFile.split('.')[-1]!='train': raise ValueError('training file must be ".train" format')
-if criteriaFile.split('.')[-1]!='py': raise ValueError('criteria file must be formatted for python (".py")')
-if matrixFile.lower()!='stdout' and matrixFile.split('.')[-1]!='matrix':
-    raise ValueError('outfile must be ".matrix".')
-
-
-
+import math, sys, random, time, argparse
+import mirscanModule
 
 
 # train
 # ------------------------------------------------------------------------------
 # args: trainfile: name of a .train format training file
-#       msfile: name of a .py format mirscan criteria file
+#       criteriafile: name of a .py format mirscan criteria file
 #       number: the number of background hairpins to use for training
 #               (0 -> use all available background hairpins)
 # returns: string with the text of the score matrix ('.matrix'-formatted)
 # ------------------------------------------------------------------------------
-# for each criteria defined in msfile, for each possible output value, a score is determined
+# for each criteria defined in criteriafile, for each possible output value, a score is determined
 # which is the base 2 log of the ratio of the frequency of that output value in the foreground
 # vs the frequency of that output value in the background.  for each criteria, for each output
 # value, the foreground and background frequencies are figured such that they include pseudocounts
 # that are added according to that feature's 'pseudo' function.  output text is in the specified
 # format of a '.matrix' file.
 
-def train(trainfile,msfile,number):
+def train(trainfile,criteriafile,number):
     ### gather the mirscan criteria and build a substitute scoring matrix
     ### (mse['bogus_ms']) to serve to the 'mirscan' function when training.
-    mse = mirscan_eval(msfile)
+    mse = mirscan_eval(criteriafile)
     mse['bogus_ms'] = dict()
     for k in mse['fdict'].keys():
         mse['bogus_ms'][k] = False
@@ -108,7 +90,6 @@ def train(trainfile,msfile,number):
     return output
 
 
-
 def getBackground(trainfile,number):
     backgroundFiles = mirscanModule.getBackgroundFiles(trainfile)
     bqueries = []
@@ -136,8 +117,6 @@ def getBackground(trainfile,number):
     return bqueries
 
 
-
-
 # mirscan_eval
 # ------------------------------------------------------------------------------
 # args: name of a mirscan criteria file (.py format)
@@ -155,13 +134,31 @@ def mirscan_eval(filename):
 
 
 
+parser = argparse.ArgumentParser(description='MiRscan3 Trainer',
+            epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
+
+parser.add_argument(dest='trainFile',
+                    help='the training file (.train)')
+parser.add_argument(dest='criteriaFile',
+                    help='the mirscan criteria file (.py)')
+
+parser.add_argument('-n', dest='number', type=int, default=0,
+                    help='the number of randomly-selected background seqs which will contribute to the score (default: all background sequences contribute)')
+parser.add_argument('-o', dest='matrixFile', default='stdout',
+                    help='the output scoring matrix file (.matrix) (default: stdout)')
+
+args = parser.parse_args()
+
+# check that args corresponding to filenames have the proper extensions.
+if args.trainFile.split('.')[-1]!='train':
+    raise ValueError('training file must be ".train" format')
+if args.criteriaFile.split('.')[-1]!='py':
+    raise ValueError('criteria file must be formatted for python (".py")')
+if args.matrixFile.lower()!='stdout' and args.matrixFile.split('.')[-1]!='matrix':
+    raise ValueError('outfile must be ".matrix".')
 
 
-scorestring = train(trainFile,criteriaFile,number)
+scorestring = train(args.trainFile,args.criteriaFile,args.number)
 
-if matrixFile.lower()=='stdout':
-    sys.stdout.write(scorestring)
-else:
-    aa = open(matrixFile,'w')
-    aa.write(scorestring)
-    aa.close()
+with (sys.stdout if args.matrixFile.lower()=='stdout' else open(args.matrixFile,'w')) as output:
+    output.write(scorestring)
