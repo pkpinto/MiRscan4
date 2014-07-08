@@ -76,27 +76,27 @@ def get_cands_above_x(x,mirs,kl):
 parser = argparse.ArgumentParser(description='MiRscan3 Cutter',
             epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
 
-parser.add_argument(dest='foregroundScores',
+parser.add_argument(dest='fore_scorefile',
                     help='the foreground score sheet file (.scr)')
-parser.add_argument(dest='backgroundScores',
+parser.add_argument(dest='back_scorefile',
                     help='the background score sheet file (.scr)')
 
-parser.add_argument('--query_in', dest='queryfileIn',
+parser.add_argument('--query_in', dest='in_queryfile',
                     help='the existing query file (.train or .fax)')
-parser.add_argument('--query_out', dest='queryfileOut', default='stdout',
+parser.add_argument('--query_out', dest='out_queryfile', default='stdout',
                     help='the filtered query file (.fax) (default: stdout)')
 
 args = parser.parse_args()
 
-if args.foregroundScores.split('.')[-1]!='scr':
+if args.fore_scorefile.split('.')[-1]!='scr':
     raise ValueError('foreground score sheets must be ".scr"')
-if args.backgroundScores.split('.')[-1]!='scr':
+if args.back_scorefile.split('.')[-1]!='scr':
     raise ValueError('background score sheets must be ".scr"')
 
 if args.queryfileIn:
-    if args.queryfileIn.split('.')[-1]!='train' and args.queryfileIn.split('.')[-1]!='fax':
+    if args.in_queryfile.split('.')[-1]!='train' and args.in_queryfile.split('.')[-1]!='fax':
         raise ValueError('query file must be ".train" or ".fax" format')
-    if args.queryfileOut.lower()!='stdout' and args.queryfileOut.split('.')[-1]!='fax':
+    if args.out_queryfile.lower()!='stdout' and args.out_queryfile.split('.')[-1]!='fax':
         raise ValueError('outfile must be ".fax".')
 
 
@@ -110,8 +110,8 @@ keys = ['totscore']
 # select a score threshold ('cut'), and the candidates are filtered for
 # having scores above the threshold ('babove' are those candidates' score
 # dictionaries).
-fs = ms.get_scores(args.foregroundScores,keys)
-bs = ms.get_scores(args.backgroundScores,keys)
+fs = ms.get_scores(args.fore_scorefile,keys)
+bs = ms.get_scores(args.back_scorefile,keys)
 fmean,fstdev,fmin = find_stats(fs,keys)
 cut = fmin - fstdev/2
 babove = get_cands_above_x(cut,bs,keys)
@@ -124,12 +124,14 @@ print('candidates above minimum: ' + str(len(babove)) + ' of ' + str(len(bs)))
 
 # if the appropriate arguments are provided, the passing candidates will
 # be put into a new .fax file.
-if args.queryfileIn:
-    candList = ms.get_queries(args.queryfileIn)
+if args.in_queryfile:
+    candList = ms.get_queries(args.in_queryfile)
     passedNames = dict()
-    for b in babove: passedNames[b['name']] = None
-    passedList = filter(lambda c: passedNames.has_key(c.name, candList)
+    for b in babove:
+        passedNames[b['name']] = None
+    passedList = filter(lambda c: passedNames.has_key(c.name), candList)
+
     if len(passedList)!=len(babove):
         raise ValueError("lengths of scored ("+str(len(babove))+") and queried ("+\
                          str(len(passedList))+") candidates don't match after filtering.")
-    ms.write_fax(passedList,args.queryfileOut)
+    ms.write_fax(passedList, args.out_queryfile)

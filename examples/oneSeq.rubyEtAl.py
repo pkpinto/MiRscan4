@@ -44,7 +44,7 @@ def mirscan(queryList,md,train=False,starts=False):
         args['le'] = mirLength                      #
         # this will guarantee that the org list will end up in the same
         # order for every candidate                 #
-        args['orgs'] = qt.orgList()                 #
+        args['orgs'] = qt.organisms()               #
         args['orgs'].sort()                         #
                                                     #
         # get the sequences, folds, and alignments  #

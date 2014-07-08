@@ -26,18 +26,20 @@ class Candidate:
         for org in org_seq_dict.keys():
             self._org_seq_dict[org] = org_seq_dict[org]
 
-    def orgList(self): return self._org_seq_dict.keys()
+    def organisms(self):
         """
         List of names (or a symbol representing the name/genome assembly, e.g.
         'dm2') of the organisms for which the candidate has candidate hairpins
         that are supposedly orthologous.
         """
+        return self._org_seq_dict.keys()
 
-    def seq(self, org): return self._org_seq_dict[org]
+    def seq(self, organism):
         """
-        Given a organism name (org), returns the genome sequences (DNA)
+        Given a organism name (organism), returns the genome sequences (DNA)
         corresponding to that candidate miRNA hairpin precursors.
         """
+        return self._org_seq_dict[organism]
 
 
 # Hairpin criteria objects (features)
@@ -284,7 +286,7 @@ def write_fax(candidates, faxfile):
     with (sys.stdout if faxfile.lower() == 'stdout' else open(faxfile, 'w')) as output:
         for c in candidates:
             output.write('>' + c.name + '\n')
-            for org in c.orgList():
+            for org in c.organisms():
                 output.write(org + '\t' + c.seq(org) + '\n')
 
 
@@ -296,14 +298,14 @@ def write_fax(candidates, faxfile):
 # ------------------------------------------------------------------------------
 def __checkCandidates(candList):
     if len(candList) > 0:
-        initOrgs = candList[0].orgList()
+        initOrgs = candList[0].organisms()
         if len(candList) > 1:
             for cand in candList[1:]:
                 for org in initOrgs:
-                    if org not in cand.orgList():
+                    if org not in cand.organisms():
                         raise ValueError("candidate "+cand.name+" is missing org: "+org)
-                if len(cand.orgList())!=len(initOrgs):
-                    raise ValueError("candidate "+cand.name+" has wrong number of orgs: "+str(cand.orgList()))
+                if len(cand.organisms())!=len(initOrgs):
+                    raise ValueError("candidate "+cand.name+" has wrong number of orgs: "+str(cand.organisms()))
 
 
 def parse_matrix(matrixfile):

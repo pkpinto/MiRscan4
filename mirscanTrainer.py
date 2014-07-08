@@ -71,7 +71,7 @@ def train(trainfile, criteriafile):
     output = '# number = '+str(number)+', fcount = '+str(fcount)+'\n'
     output += '# training file: '+trainfile+'\n'
     output += '# '+time.asctime(time.localtime())+'\n'
-    ol = fqueries[0].orgList()
+    ol = fqueries[0].organisms()
     ol.sort()
     output += '# org keys:\t'+'\t'.join(ol)+'\n'
 
