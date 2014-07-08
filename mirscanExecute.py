@@ -5,51 +5,39 @@
 # and outputs the resulting score sheet.
 
 import sys, argparse
-import mirscanModule
+import mirscanModule as ms
 
 
-
-parser = argparse.ArgumentParser(description='MiRscan3 Execute',
+parser = argparse.ArgumentParser(description='MiRscan3 Scorer',
             epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
 
-parser.add_argument(dest='queryFile',
+parser.add_argument(dest='queryfile',
                     help='the query file (.train or .fax)')
-parser.add_argument(dest='criteriaFile',
+parser.add_argument(dest='criteriafile',
                     help='the mirscan criteria file (.py)')
-parser.add_argument(dest='matrixFile',
+parser.add_argument(dest='matrixfile',
                     help='the scoring matrix file (.matrix)')
-
-parser.add_argument('-o', dest='scoreFile', default='stdout',
+parser.add_argument('-o', dest='scorefile', default='stdout',
                     help='the output score sheet file (.scr) (default: stdout)')
 
 args = parser.parse_args()
 
 # check that args corresponding to filenames have the proper extensions.
-if args.queryFile.split('.')[-1]!='train' and args.queryFile.split('.')[-1]!='fax':
-    raise ValueError('query file must be ".train" or ".fax" format')
-if args.criteriaFile.split('.')[-1]!='py':
-    raise ValueError('criteria file must be formatted for python (".py")')
-if args.matrixFile.split('.')[-1]!='matrix':
-    raise ValueError('scoring matrix must be ".matrix" format')
-if args.scoreFile.lower()!='stdout' and args.scoreFile.split('.')[-1]!='scr':
-    raise ValueError('outfile must be ".scr".')
+if args.queryfile.split('.')[-1] != 'train' and args.queryfile.split('.')[-1] != 'fax':
+    raise ValueError('Query file must be in \'.train\' or \'.fax\' format.')
+if args.criteriafile.split('.')[-1] != 'py':
+    raise ValueError('Criteria file must be in \'.py\' format.')
+if args.matrixfile.split('.')[-1] != 'matrix':
+    raise ValueError('Matrix file must be in \'.matrix\' format.')
+if args.scorefile.lower() != 'stdout' and args.scorefile.split('.')[-1] != 'scr':
+    raise ValueError('Output score sheet file must be in \'.scr\' format.')
 
-
+queryList = ms.get_queries(args.queryfile)
 # get the mirscan criteria dictionary, 'fdict'
-f = open(args.criteriaFile)
-mirscanText = f.read()
-f.close()
-mirscanDict = dict()
-exec mirscanText in mirscanDict
-fdict = mirscanDict['fdict']
+fdict = ms.parse_criteria(args.criteriafile)['fdict']
+ms = ms.parse_matrix(args.matrixfile)
 
-
-# get the scoring matrix and queries
-ms = mirscanModule.get_ms(args.matrixFile)
-queryList = mirscanModule.get_queries(args.queryFile)
-
-
-with (sys.stdout if args.scoreFile.lower()=='stdout' else open(args.scoreFile,'w')) as output:
+with (sys.stdout if args.scorefile.lower() == 'stdout' else open(args.scorefile, 'w')) as output:
 
     # score each candidate and print out the results in ".scr" specified format.
     for candScore in mirscanDict['mirscan'](queryList,ms):

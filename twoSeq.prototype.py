@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import math, random
 import mirscanModule
 
@@ -82,7 +84,7 @@ def mirscan(queryList,md,train=False,starts=False):
         npl.sort()                                  #
         candlist = [val for (key, val) in npl]      #
         bestCand = candlist[-1]                     #
-        bestCand['name'] = qt.name()                #
+        bestCand['name'] = qt.name                  #
         all_data.append(bestCand)                   #
                                                     #
     return all_data                                 #
