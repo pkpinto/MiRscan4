@@ -132,7 +132,7 @@ def get_folds(sl):
     if len(sl)>0:
         ut_table = string.maketrans('U','T')
         all_s = '\n'.join(sl)
-        fi,fo = os.popen2('RNAfold')
+        fi,fo = os.popen2('RNAfold --noPS')
         fi.write(all_s)
         fi.close()
         b = fo.read().split('\n')
