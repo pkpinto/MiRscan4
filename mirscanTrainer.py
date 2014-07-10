@@ -86,8 +86,13 @@ def train(trainfile, criteriafile):
     return output
 
 
-parser = argparse.ArgumentParser(description='MiRscan3 Trainer',
-            epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
+parser = argparse.ArgumentParser(description='''MiRscan3 Trainer.
+                This script takes a set of foreground and background miRNA
+                candidates (.train), a mirscan criteria file (.py) with rules
+                for their evaluation and outputs a scoring matrix file (.matrix)
+                which can be used for scoring additional miRNAs.''',
+            epilog='''Paulo Pinto, IEB-WWU, based on:
+                http://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html''')
 
 parser.add_argument(dest='trainfile',
                     help='the training file (.train)')

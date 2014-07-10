@@ -44,8 +44,16 @@ def filter_scores(scores, keys, threshold):
     return selected
 
 
-parser = argparse.ArgumentParser(description='MiRscan3 Cutter',
-            epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
+parser = argparse.ArgumentParser(description='''MiRscan3 Cutter.
+                This script compares the score sheet files (.scr) of both the
+                foreground and  background set of miRNA candidates. It computes
+                the mean, standard deviation and minimum score of the
+                foreground set to establish a threshold value. When the query
+                file with background is provided (.train of .fax), it
+                proceeds to filter those candidates with a score above the
+                threshold computed above.''',
+            epilog='''Paulo Pinto, IEB-WWU, based on:
+                http://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html''')
 
 parser.add_argument(dest='fore_scorefile',
                     help='the foreground score sheet file (.scr)')

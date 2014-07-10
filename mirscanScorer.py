@@ -7,8 +7,13 @@
 import sys, argparse
 import mirscanIO as msio
 
-parser = argparse.ArgumentParser(description='MiRscan3 Scorer',
-            epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
+parser = argparse.ArgumentParser(description='''MiRscan3 Scorer.
+                Given a query list of miRNA candidates (.train of .fax), this
+                script scores them using an (also given) mirscan criteria file
+                (.py) and scoring matrix file (.matrix). The output is done to
+                a score sheet file (.scr).''',
+            epilog='''Paulo Pinto, IEB-WWU, based on:
+                http://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html''')
 
 parser.add_argument(dest='queryfile',
                     help='the query file (.train or .fax)')
