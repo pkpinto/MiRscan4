@@ -7,7 +7,7 @@
 # one standard deviation below the lowest score from the foreground set.
 
 import sys, math, argparse
-import mirscanModule as ms
+import mirscanIO as msio
 
 def filtered_score(score, keys):
     """
@@ -76,8 +76,8 @@ if args.in_queryfile:
 # feature scores, referred to as 'totscore' in mirscan's output.
 score_keys = ['totscore']
 
-fs = ms.parse_scores(args.fore_scorefile, score_keys)
-bs = ms.parse_scores(args.back_scorefile, score_keys)
+fs = msio.parse_scores(args.fore_scorefile, score_keys)
+bs = msio.parse_scores(args.back_scorefile, score_keys)
 
 # the score distribution for the foreground set is analyzed to select a score
 # threshold ('cut'), and the candidates are filtered for having scores above
@@ -92,11 +92,11 @@ print('\t'.join(['background:', 'candidates above minimum=' + str(len(bcut)), 't
 # if the appropriate arguments were provided, the passing candidates will be
 # placed into a new .fax file.
 if args.in_queryfile:
-    candidates = ms.parse_query(args.in_queryfile)
+    candidates = msio.parse_query(args.in_queryfile)
     names = {c['name'] for c in bcut}
     selected_candidates = filter(lambda c: c.name in names, candidates)
 
     if len(selected_candidates) != len(bcut):
         raise ValueError('number of scored (' + str(len(bcut)) +') and queried (' \
                         + str(len(selected_candidates)) + ') candidates don\'t match after filtering.')
-    ms.write_fax(selected_candidates, args.out_queryfile)
+    msio.write_fax(selected_candidates, args.out_queryfile)

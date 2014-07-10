@@ -5,7 +5,7 @@
 # and outputs the resulting score sheet.
 
 import sys, argparse
-import mirscanModule as ms
+import mirscanIO as msio
 
 parser = argparse.ArgumentParser(description='MiRscan3 Scorer',
             epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
@@ -32,9 +32,9 @@ if args.scorefile.lower() != 'stdout' and args.scorefile.split('.')[-1] != 'scr'
     raise ValueError('Output score sheet file must be in \'.scr\' format.')
 
 
-candidates = ms.parse_query(args.queryfile)
-mse = ms.parse_criteria(args.criteriafile)
-matrix = ms.parse_matrix(args.matrixfile)
+candidates = msio.parse_query(args.queryfile)
+mse = msio.parse_criteria(args.criteriafile)
+matrix = msio.parse_matrix(args.matrixfile)
 
 with (sys.stdout if args.scorefile.lower() == 'stdout' else open(args.scorefile, 'w')) as output:
 

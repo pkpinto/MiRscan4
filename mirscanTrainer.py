@@ -13,7 +13,7 @@
 # generated, are printed out in '.matrix' format.
 
 import math, sys, time, argparse
-import mirscanModule as ms
+import mirscanIO as msio
 
 def train(trainfile, criteriafile):
     """
@@ -27,16 +27,16 @@ def train(trainfile, criteriafile):
     Output text is in the specified format of a '.matrix' file.
     """
     # the foreground sets
-    fqueries,fstarts = ms.parse_train(trainfile, True)
+    fqueries,fstarts = msio.parse_train(trainfile, True)
 
     # the background sets
     bqueries = list()
-    for bgf in ms.get_background_files(trainfile):
-        bqueries.extend(ms.parse_query(bgf))
+    for bgf in msio.get_background_files(trainfile):
+        bqueries.extend(msio.parse_query(bgf))
 
     # read the mirscan criteria and build a substitute scoring matrix
     # (mse['bogus_ms']) to serve to the mirscan function when training
-    mse = ms.parse_criteria(criteriafile)
+    mse = msio.parse_criteria(criteriafile)
     mse['bogus_ms'] = dict()
     for k in mse['fdict'].keys():
         mse['bogus_ms'][k] = False
