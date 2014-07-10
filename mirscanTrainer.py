@@ -15,25 +15,16 @@
 import math, sys, time, argparse
 import mirscanModule as ms
 
-
-# train
-# ------------------------------------------------------------------------------
-# args: trainfile: name of a .train format training file
-#       criteriafile: name of a .py format mirscan criteria file
-#       number: the number of background hairpins to use for training
-#               (0 -> use all available background hairpins)
-# returns: string with the text of the score matrix ('.matrix'-formatted)
-# ------------------------------------------------------------------------------
-# for each criteria defined in criteriafile, for each possible output value, a score is determined
-# which is the base 2 log of the ratio of the frequency of that output value in the foreground
-# vs the frequency of that output value in the background.  for each criteria, for each output
-# value, the foreground and background frequencies are figured such that they include pseudocounts
-# that are added according to that feature's 'pseudo' function.  output text is in the specified
-# format of a '.matrix' file.
-
 def train(trainfile, criteriafile):
     """
+    For each criteria defined in criteriafile, for each possible output value,
+    a score is determined which is the base 2 log of the ratio of the frequency
+    of that output value in the foreground vs the frequency of that output
+    value in the background.  for each criteria, for each output value, the
+    foreground and background frequencies are figured such that they include
+    pseudocounts that are added according to that feature's 'pseudo' function.
 
+    Output text is in the specified format of a '.matrix' file.
     """
     # the foreground sets
     fqueries,fstarts = ms.parse_train(trainfile, True)
@@ -41,7 +32,7 @@ def train(trainfile, criteriafile):
     # the background sets
     bqueries = list()
     for bgf in ms.get_background_files(trainfile):
-        bqueries.extend(ms.get_queries(bgf))
+        bqueries.extend(ms.parse_query(bgf))
 
     # read the mirscan criteria and build a substitute scoring matrix
     # (mse['bogus_ms']) to serve to the mirscan function when training.
@@ -115,6 +106,7 @@ if args.criteriafile.split('.')[-1] != 'py':
     raise ValueError('Criteria file must be in \'.py\' format.')
 if args.matrixfile.lower() != 'stdout' and args.matrixfile.split('.')[-1] != 'matrix':
     raise ValueError('Output matrix file must be in \'.matrix\' format.')
+
 
 matrixstring = train(args.trainfile, args.criteriafile)
 

@@ -7,7 +7,6 @@
 import sys, argparse
 import mirscanModule as ms
 
-
 parser = argparse.ArgumentParser(description='MiRscan3 Scorer',
             epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
 
@@ -32,20 +31,20 @@ if args.matrixfile.split('.')[-1] != 'matrix':
 if args.scorefile.lower() != 'stdout' and args.scorefile.split('.')[-1] != 'scr':
     raise ValueError('Output score sheet file must be in \'.scr\' format.')
 
-queryList = ms.get_queries(args.queryfile)
-# get the mirscan criteria dictionary, 'fdict'
-fdict = ms.parse_criteria(args.criteriafile)['fdict']
-ms = ms.parse_matrix(args.matrixfile)
+
+candidates = ms.parse_query(args.queryfile)
+mse = ms.parse_criteria(args.criteriafile)
+matrix = ms.parse_matrix(args.matrixfile)
 
 with (sys.stdout if args.scorefile.lower() == 'stdout' else open(args.scorefile, 'w')) as output:
 
     # score each candidate and print out the results in ".scr" specified format.
-    for candScore in mirscanDict['mirscan'](queryList,ms):
+    for candScore in mse['mirscan'](candidates, matrix):
         data = []
         data.append(candScore['name'])
         data.append('totscore '+str(candScore['totscore']))
         # print out loc values for each species
         locKeys = filter(lambda k: k[:4]=='loc_', candScore.keys())
         for k in locKeys: data.append(k+' '+str(candScore[k]))
-        for k in fdict.keys(): data.append(k+' '+str(candScore[k]))
+        for k in mse['fdict'].keys(): data.append(k+' '+str(candScore[k]))
         output.write(' '.join(data)+'\n')

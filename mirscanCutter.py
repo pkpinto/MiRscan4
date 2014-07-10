@@ -1,49 +1,28 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# this script collects the scores earned by the foreground mirs and finds
-# the mean and standard dev. of the foreground score distribution.  it decides
-# where to cut the background.  this point will be the score which is one
-# standard deviation below the lowest score from the foreground set.  it then
-# filters through all of the .scr files in the directory and generates new
-# .wsl files in a new directory with those sequences that pass the threshold
-# score.
+# This script collects the scores calculated for the foreground cadidates and
+# finds the mean and standard deviation of the foreground score distribution.
+# It decides where to cut the background: the point where the score which is
+# one standard deviation below the lowest score from the foreground set.
 
 import sys, math, argparse
 import mirscanModule as ms
 
+def filtered_score(score, keys):
+    """
+    Computes total score as the sum of all scores identified in keys.
+    """
+    total = 0
+    for k in keys:
+        total += score[k]
+    return total
 
-# filtered_score
-# -----------------------------------------------------------------
-# args: mir: a dictionary of score features (aka scores for features) for
-#            a particular miR
-#       kl: list of strings which correspond to 'mir' dictionary keys;
-#            these are the keys whose values will be summed to generate
-#            the final score
-# returns: new: sum of the scores for features listed in 'kl'
-# -----------------------------------------------------------------
-# used to get the scores for individual mirs
-def filtered_score(mir,kl):
-    new = 0
-    for i in kl: new+=mir[i]
-    return new
-
-
-
-# find_stats
-# -----------------------------------------------------------------
-# args: mirs: dictionary of dictionaries; output 'c' from get_scores
-#       kl: list of strings which correspond to 'mir' dictionary keys;
-#            these are the keys whose values will be summed to generate
-#            the final score
-# returns: mean: arithmatic mean of the scores for all of the mirs in
-#               'mirs' arg as determined by filtered_score given 'kl' arg
-#          stdev: standard deviation of scores from 'mean'
-#          min(a): smallest score for all 'mirs' entries
-# -----------------------------------------------------------------
-# gets mean score, stdev of scores, and min score for all of the miR
-# candidates' filtered scores
-def find_stats(mirs,kl):
+def compute_stats(mirs,kl):
+    """
+    Computes the mean score, stdev of scores, and min score calculated over
+    filtered total score.
+    """
     a = map(lambda m: filtered_score(m,kl), mirs)
     mean = sum(a)/len(a)
     dev = 0
@@ -53,24 +32,16 @@ def find_stats(mirs,kl):
     stdev = math.sqrt(dev/len(a))
     return mean,stdev,min(a)
 
-
-
-# get_cands_above_x
-# -----------------------------------------------------------------
-# args: x: a number
-#       mirs: dictionary of dictionaries; output 'c' from get_scores
-#       kl: list of strings which correspond to 'mir' dictionary keys;
-#            these are the keys whose values will be summed to generate
-#            the final score
-# returns: new: list of keys from arg 'mirs'
-# -----------------------------------------------------------------
-# gets a list of all the candidates whose filtered scores are above arg 'x'
-def get_cands_above_x(x,mirs,kl):
-    new = []
-    for m in mirs:
-        if filtered_score(m,kl) > x: new.append(m)
-    return new
-
+def filter_scores(scores, keys, threshold):
+    """
+    Goes through a list of scores, gets a total score for keys defined in keys
+    and returns those scores with a total above the threshold value.
+    """
+    selected = list()
+    for s in scores:
+        if filtered_score(s, keys) > threshold:
+            selected.append(s)
+    return selected
 
 
 parser = argparse.ArgumentParser(description='MiRscan3 Cutter',
@@ -88,50 +59,44 @@ parser.add_argument('--query_out', dest='out_queryfile', default='stdout',
 
 args = parser.parse_args()
 
-if args.fore_scorefile.split('.')[-1]!='scr':
-    raise ValueError('foreground score sheets must be ".scr"')
-if args.back_scorefile.split('.')[-1]!='scr':
-    raise ValueError('background score sheets must be ".scr"')
+if args.fore_scorefile.split('.')[-1] != 'scr':
+    raise ValueError('Foreground score sheet file must be in \'.scr\' format.')
+if args.back_scorefile.split('.')[-1] != 'scr':
+    raise ValueError('Background score sheet file must be in \'.scr\' format.')
 
-if args.queryfileIn:
-    if args.in_queryfile.split('.')[-1]!='train' and args.in_queryfile.split('.')[-1]!='fax':
-        raise ValueError('query file must be ".train" or ".fax" format')
-    if args.out_queryfile.lower()!='stdout' and args.out_queryfile.split('.')[-1]!='fax':
-        raise ValueError('outfile must be ".fax".')
+if args.in_queryfile:
+    if args.in_queryfile.split('.')[-1] != 'train' and args.in_queryfile.split('.')[-1] != 'fax':
+        raise ValueError('Query file must be in \'.train\' or \'.fax\' format.')
+    if args.out_queryfile.lower() != 'stdout' and args.out_queryfile.split('.')[-1] != 'fax':
+        raise ValueError('Output query file must be in \'.fax\' format.')
 
 
 # this list can be modified to change the behavior of score_cut.py, but here,
 # it is set to use the pre-computed (by mirscan) sum of all of the individual
 # feature scores, referred to as 'totscore' in mirscan's output.
-keys = ['totscore']
+score_keys = ['totscore']
 
+fs = ms.parse_scores(args.fore_scorefile, score_keys)
+bs = ms.parse_scores(args.back_scorefile, score_keys)
 
-# below, the score distribution for the foreground set is analyzed to
-# select a score threshold ('cut'), and the candidates are filtered for
-# having scores above the threshold ('babove' are those candidates' score
-# dictionaries).
-fs = ms.get_scores(args.fore_scorefile,keys)
-bs = ms.get_scores(args.back_scorefile,keys)
-fmean,fstdev,fmin = find_stats(fs,keys)
-cut = fmin - fstdev/2
-babove = get_cands_above_x(cut,bs,keys)
+# the score distribution for the foreground set is analyzed to select a score
+# threshold ('cut'), and the candidates are filtered for having scores above
+# the threshold ('bcut' are those candidates' score dictionaries).
+fmean,fstdev,fmin = compute_stats(fs, score_keys)
+cut = fmin - fstdev / 2.0
+bcut = filter_scores(bs, score_keys, cut)
 
+print('\t'.join(['foreground:', 'mean=' + str(fmean), 'stdev=' + str(fstdev), 'cut=' + str(cut)]))
+print('\t'.join(['background:', 'candidates above minimum=' + str(len(bcut)), 'total candidates=' + str(len(bs))]))
 
-print('\t'.join(['fore','mean='+str(fmean),'stdev='+str(fstdev)]))
-print('cut = ' + str(cut))
-print('candidates above minimum: ' + str(len(babove)) + ' of ' + str(len(bs)))
-
-
-# if the appropriate arguments are provided, the passing candidates will
-# be put into a new .fax file.
+# if the appropriate arguments were provided, the passing candidates will be
+# placed into a new .fax file.
 if args.in_queryfile:
-    candList = ms.get_queries(args.in_queryfile)
-    passedNames = dict()
-    for b in babove:
-        passedNames[b['name']] = None
-    passedList = filter(lambda c: passedNames.has_key(c.name), candList)
+    candidates = ms.parse_query(args.in_queryfile)
+    names = {c['name'] for c in bcut}
+    selected_candidates = filter(lambda c: c.name in names, candidates)
 
-    if len(passedList)!=len(babove):
-        raise ValueError("lengths of scored ("+str(len(babove))+") and queried ("+\
-                         str(len(passedList))+") candidates don't match after filtering.")
-    ms.write_fax(passedList, args.out_queryfile)
+    if len(selected_candidates) != len(bcut):
+        raise ValueError('number of scored (' + str(len(bcut)) +') and queried (' \
+                        + str(len(selected_candidates)) + ') candidates don\'t match after filtering.')
+    ms.write_fax(selected_candidates, args.out_queryfile)
