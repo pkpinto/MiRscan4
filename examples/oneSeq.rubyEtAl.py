@@ -1,10 +1,12 @@
+# coding: utf-8
+
 import math, random
-import mirscanModule
+import mirscanCriteria as msc
 
 
 # mirscan
 # ------------------------------------------------------------------------------
-# args: queryList: a list of miRNA hairpin Candidate objects
+# args: candidates: a list of miRNA hairpin Candidate objects
 #       md: scoring matrix; a dictionary of dictionaries, whose first keys are the names
 #           of scoring criteria, second keys are the possible output values for that
 #           criterion, and values are numeric scores.  for training, only the first keys
@@ -13,8 +15,8 @@ import mirscanModule
 #            will be given a non-False value.
 #       starts: (optional) list of dictionaries whose keys are organism names and values are start
 #               positions for the miRNA in the corresponding hairpin sequence.  index of a dictionary
-#               in the 'starts' list must match the index of the corresponding candidate in the 'queryList'.
-# returns: all_data: list of dictionaries, one for each item in queryList.  keys are the names of
+#               in the 'starts' list must match the index of the corresponding candidate in the 'candidates'.
+# returns: all_data: list of dictionaries, one for each item in candidates.  keys are the names of
 #               criteria from 'fdict', values are either the assigned scores (train==False) or
 #               the actual values returned by the criteria function calls (train==True).
 # ------------------------------------------------------------------------------
@@ -28,26 +30,25 @@ import mirscanModule
 # is produced.  the best scoring position for a given hairpin is obtained, along with its score,
 # and a dictionary of those criteria scores is returned for each candidate.
 
-def mirscan(queryList,md,train=False,starts=False):
+def mirscan(candidates, md, train=False, starts=False):
 
-    mirLength = 22  ## user may alter this value, but the variable must remain
+    mir_length = 22  ## user may alter this value, but the variable must remain
 
 #####################################################
 ## USER SHOULD NOT ALTER THIS BOX
 #####################################################
     all_data = []                                   #
-    for n in range(len(queryList)):                 #
+    for qt in candidates:                           #
         args = dict()                               #
-        qt = queryList[n]                           #
-        args['le'] = mirLength                      #
+        args['le'] = mir_length                     #
         # this will guarantee that the org list will end up in the same
         # order for every candidate                 #
-        args['orgs'] = qt.orgList()                 #
+        args['orgs'] = qt.organisms()               #
         args['orgs'].sort()                         #
                                                     #
         # get the sequences, folds, and alignments  #
         args['seqs'] = map(lambda org: qt.seq(org), args['orgs'])
-        args['ifolds'] = mirscanModule.get_folds(args['seqs'])
+        args['ifolds'] = msc.get_folds(args['seqs'])
         args['al'] = args['seqs']                   #
                                                     #
 #####################################################
@@ -56,7 +57,7 @@ def mirscan(queryList,md,train=False,starts=False):
         # prepare the basepair dictionaries
         args['bpll'],args['bprl'],args['bpdl'],args['bulgesl'] = [],[],[],[]
         for i in args['ifolds']:
-            newbpl,newbpr,newbpd = mirscanModule.make_bp_dicts(i)
+            newbpl,newbpr,newbpd = make_bp_dicts(i)
             args['bpll'].append(newbpl)
             args['bprl'].append(newbpr)
             args['bpdl'].append(newbpd)
@@ -64,7 +65,7 @@ def mirscan(queryList,md,train=False,starts=False):
 
         # get the complexity measurement for the hairpin
         args['compl'] = map(lambda a: max([complexity_pre_help(a,len(a)/5), \
-                                   complexity_pre_help(mirscanModule.reverse_string(a), \
+                                   complexity_pre_help(reverse_string(a), \
                                                        len(a)/5)]),args['seqs'])
 
 
@@ -76,26 +77,26 @@ def mirscan(queryList,md,train=False,starts=False):
         candlist = []                               #
         if starts:                                  #
             args['pos'] = map(lambda org: starts[n][org], args['orgs'])
-            args['iside'] = mirscanModule.pick_side(args['ifolds'],args['seqs'],args['pos'],args['le'])
-            candlist.append(mirscanModule.mscore(args,md,fdict,train))
+            args['iside'] = msc.pick_side(args['ifolds'],args['seqs'],args['pos'],args['le'])
+            candlist.append(msc.mscore(args,md,fdict,train))
         elif train:                                 #
-            start_list = mirscanModule.make_start_list(args['seqs'],args['al'],args['le'])
+            start_list = msc.make_start_list(args['seqs'],args['al'],args['le'])
             args['pos'] = random.choice(start_list) #
-            args['iside'] = mirscanModule.pick_side(args['ifolds'],args['seqs'],args['pos'],args['le'])
-            candlist.append(mirscanModule.mscore(args,md,fdict,train))
+            args['iside'] = msc.pick_side(args['ifolds'],args['seqs'],args['pos'],args['le'])
+            candlist.append(msc.mscore(args,md,fdict,train))
         else:                                       #
-            start_list = mirscanModule.make_start_list(args['seqs'],args['al'],args['le'])
+            start_list = msc.make_start_list(args['seqs'],args['al'],args['le'])
             for i in start_list:                    #
                 args['pos'] = i                     #
-                args['iside'] = mirscanModule.pick_side(args['ifolds'],args['seqs'],args['pos'],args['le'])
-                candlist.append(mirscanModule.mscore(args,md,fdict))
+                args['iside'] = msc.pick_side(args['ifolds'],args['seqs'],args['pos'],args['le'])
+                candlist.append(msc.mscore(args,md,fdict))
                                                     #
         # sort the start position options by the totscores and return the highest
         npl = [(x['totscore'],x) for x in candlist] #
         npl.sort()                                  #
         candlist = [val for (key, val) in npl]      #
         bestCand = candlist[-1]                     #
-        bestCand['name'] = qt.name()                #
+        bestCand['name'] = qt.name                  #
         all_data.append(bestCand)                   #
                                                     #
     return all_data                                 #
@@ -105,8 +106,8 @@ def mirscan(queryList,md,train=False,starts=False):
 
 
 # fdict
-# this is a dictionary of functions.  each "function" is an instance of class string_ or
-# number_feature.  the keys are the names of the criteria.  if the same function is used
+# this is a dictionary of functions.  each "function" is an instance of class String or
+# NumericalFeature.  the keys are the names of the criteria.  if the same function is used
 # by multiple criteria, then there is a reference for each.
 fdict = dict()
 
@@ -116,19 +117,19 @@ fdict = dict()
 ### PROTOTYPE fdict ENTRY:
 ### ------------------------------------------------------------------------------
 ### First, give the criteria a name (this should be a string, 'nameOfCriteria' below) and
-### define it as either a number_feature or a string_feature (these are implemented in
+### define it as either a NumericalFeature or a StringFeature (these are implemented in
 ### mirscanModule):
 #
-# fdict[nameOfCriteria] = mirscanModule.number_feature()
+# fdict[nameOfCriteria] = mirscanModule.NumericalFeature()
 #
 ### Now, add the two required attributes of the feature: first, a function that measures some aspect
-### of the miRNA candidate and returns an appropriate value (must be a string for a string_feature
-### and must be a number for a number_feature); and second, a list of all possible values that
+### of the miRNA candidate and returns an appropriate value (must be a string for a StringFeature
+### and must be a number for a NumericalFeature); and second, a list of all possible values that
 ### can be returned by the defined function (tip: it may be useful to define the acceptable return
 ### values first, and then use that list in the function to make sure that the return value is
-### acceptable; this will be especially helpful for a number_feature, where generating the return
+### acceptable; this will be especially helpful for a NumericalFeature, where generating the return
 ### value may involve rounding some other quantitative measure.  note also that, if you fail to do
-### this, that number_feature has a rounding function that it will apply automatically).
+### this, that NumericalFeature has a rounding function that it will apply automatically).
 #
 # fdict[nameOfCriteria].kl = listOfKeys
 # fdict[nameOfCriteria].fx = function that takes 'self' and the argument dictionary that is
@@ -140,6 +141,55 @@ fdict = dict()
 ### in the case of overwriting attributes, it is important to maintain their specified
 ### requirements.
 ### ------------------------------------------------------------------------------
+
+
+
+
+# reverse_string
+# ------------------------------------------------------------------------------
+# args: st: a string
+# returns: the same string with all characters appearing in the reverse order
+# ------------------------------------------------------------------------------
+# reverses the order of characters in a string
+def reverse_string(st):
+    li = []
+    for i in st: li.append(i)
+    li.reverse()
+    return ''.join(li)
+
+
+# make_bp_dicts
+# ------------------------------------------------------------------------------
+# args: fold: string which is a bracket-notation RNA secondary structure
+# returns: bpl: a dictionary whose keys are integer positions in the secondary structure,
+#               and whose values are 1 if the character in that positon is "(", 0 otherwise
+#          bpr: a dictionary whose keys are integer positions in the secondary structure,
+#               and whose values are 1 if the character in that positon is ")", 0 otherwise
+#          bpd: a dictionary in which each paired position is a key and the position number
+#               to which it is paired is its value
+# ------------------------------------------------------------------------------
+# takes bracket notation, makes dictionaries described.  the values in bpr and bpl are supposed
+# to represent probabilities of those positions being paired.  since mfe structures are the
+# input, probabilities are either 1 or 0.
+def make_bp_dicts(fold):
+    bpd = dict()
+    bpl = dict()
+    bpr = dict()
+    pll = []
+    for n in range(len(fold)):
+        if fold[n]=='(':
+            bpl[n] = 1
+            bpr[n] = 0
+            pll.append(n)
+        elif fold[n]==')':
+            bpd[n] = pll.pop()
+            bpd[bpd[n]] = n
+            bpr[n] = 1
+            bpl[n] = 0
+        else:
+            bpr[n] = 0
+            bpl[n] = 0
+    return bpl,bpr,bpd
 
 
 
@@ -156,7 +206,7 @@ fdict = dict()
 # ------------------------------------------------------------------------------
 # for each bulge, counts number of unsymmetrically-bulged bases and sums them over all bulges
 # uses individual structures
-fdict['bulge_sym_D'] = mirscanModule.number_feature()
+fdict['bulge_sym_D'] = msc.NumericalFeature()
 fdict['bulge_sym_D'].kl = [0,1,2,3,4,5,6,7,8,9]
 def method5_alt_D(self,ar):
     def fx5_help(seq,blg,pos,le):
@@ -326,7 +376,7 @@ def method6_G(self,ar,give_edges=False):
         else: return end - beginning
     if give_edges: return map(lambda r: fx6_help(ar['ifolds'][r],ar['seqs'][r],ar['bpdl'][r],ar['pos'][r],ar['le'],ar['iside'],1), range(len(ar['al'])))
     else: return float(sum(map(lambda r: fx6_help(ar['ifolds'][r],ar['seqs'][r],ar['bpdl'][r],ar['pos'][r],ar['le'],ar['iside']), range(len(ar['al'])))))/len(ar['al'])
-fdict['loop_dis_G'] = mirscanModule.number_feature()
+fdict['loop_dis_G'] = msc.NumericalFeature()
 fdict['loop_dis_G'].kl = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35]
 fdict['loop_dis_G'].fx = method6_G
 
@@ -347,7 +397,7 @@ def method7(self,ar):
 for n in [0,8]:
     for nn in range(1):
         name = 'nuc'+str(n+1)+'_s'+str(nn+1)
-        fdict[name] = mirscanModule.string_feature()
+        fdict[name] = msc.StringFeature()
         fdict[name].pos = n
         fdict[name].seq = nn
         fdict[name].kl = ['A','T','C','G','N']
@@ -366,7 +416,7 @@ for n in [0,8]:
 # returns: the arthmatic mean of the values in the ar['compl_A12'] list
 # ------------------------------------------------------------------------------
 def method_complexity(self,ar): return sum(ar['compl'])/len(ar['compl'])
-fdict['compl'] = mirscanModule.number_feature()
+fdict['compl'] = msc.NumericalFeature()
 fdict['compl'].kl = [-2,-1,0,1,2,3,4,5]
 fdict['compl'].fx = method_complexity
 #
@@ -458,13 +508,13 @@ def method8_A(self,ar):
 for n in range(0,20):
     if n >= 0:
         entry_name = 'bp_matrix_A_n'+str(n+1)
-        fdict[entry_name] = mirscanModule.string_feature()
+        fdict[entry_name] = msc.StringFeature()
         fdict[entry_name].kl = ['paired','unpaired']
         fdict[entry_name].pos = n
         fdict[entry_name].fx = method8_A
     else:
         entry_name = 'bp_matrix_A_n'+str(n)
-        fdict[entry_name] = mirscanModule.string_feature()
+        fdict[entry_name] = msc.StringFeature()
         fdict[entry_name].kl = ['paired','unpaired']
         fdict[entry_name].pos = n
         fdict[entry_name].fx = method8_A
@@ -505,13 +555,13 @@ def method8_C(self,ar):
 for n in [-8,-7,-6,-5,-4,-3,-2,-1,20,21]:
     if n >= 0:
         entry_name = 'bp_matrix_C_n'+str(n+1)
-        fdict[entry_name] = mirscanModule.string_feature()
+        fdict[entry_name] = msc.StringFeature()
         fdict[entry_name].kl = ['paired','unpaired']
         fdict[entry_name].pos = n
         fdict[entry_name].fx = method8_C
     else:
         entry_name = 'bp_matrix_C_n'+str(n)
-        fdict[entry_name] = mirscanModule.string_feature()
+        fdict[entry_name] = msc.StringFeature()
         fdict[entry_name].kl = ['paired','unpaired']
         fdict[entry_name].pos = n
         fdict[entry_name].fx = method8_C

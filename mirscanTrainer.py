@@ -9,43 +9,40 @@
 # in the foreground set versus the background set to arrive at a score for that value, returned
 # by that feature.
 #
-# The scoring matrices, along with some additional info about
-# how they were generated, are printed out in '.matrix' format.  'train'
-# is the master function, and is called at the bottom of the script.
+# The scoring matrices, along with some additional info about how they were
+# generated, are printed out in '.matrix' format.
 
-import math, sys, random, time, argparse
-import mirscanModule
+import math, sys, time, argparse
+import mirscanIO as msio
 
+def train(trainfile, criteriafile):
+    """
+    For each criteria defined in criteriafile, for each possible output value,
+    a score is determined which is the base 2 log of the ratio of the frequency
+    of that output value in the foreground vs the frequency of that output
+    value in the background.  for each criteria, for each output value, the
+    foreground and background frequencies are figured such that they include
+    pseudocounts that are added according to that feature's 'pseudo' function.
 
-# train
-# ------------------------------------------------------------------------------
-# args: trainfile: name of a .train format training file
-#       criteriafile: name of a .py format mirscan criteria file
-#       number: the number of background hairpins to use for training
-#               (0 -> use all available background hairpins)
-# returns: string with the text of the score matrix ('.matrix'-formatted)
-# ------------------------------------------------------------------------------
-# for each criteria defined in criteriafile, for each possible output value, a score is determined
-# which is the base 2 log of the ratio of the frequency of that output value in the foreground
-# vs the frequency of that output value in the background.  for each criteria, for each output
-# value, the foreground and background frequencies are figured such that they include pseudocounts
-# that are added according to that feature's 'pseudo' function.  output text is in the specified
-# format of a '.matrix' file.
+    Output text is in the specified format of a '.matrix' file.
+    """
+    # the foreground sets
+    fqueries,fstarts = msio.parse_train(trainfile, True)
 
-def train(trainfile,criteriafile,number):
-    ### gather the mirscan criteria and build a substitute scoring matrix
-    ### (mse['bogus_ms']) to serve to the 'mirscan' function when training.
-    mse = mirscan_eval(criteriafile)
+    # the background sets
+    bqueries = list()
+    for bgf in msio.get_background_files(trainfile):
+        bqueries.extend(msio.parse_query(bgf))
+
+    # read the mirscan criteria and build a substitute scoring matrix
+    # (mse['bogus_ms']) to serve to the mirscan function when training
+    mse = msio.parse_criteria(criteriafile)
     mse['bogus_ms'] = dict()
     for k in mse['fdict'].keys():
         mse['bogus_ms'][k] = False
 
-    ### get the foreground and background sets
-    fqueries,fstarts = mirscanModule.parseTrain(trainfile,True)
-    bqueries = getBackground(trainfile,number)
-
-    ### for each criteria, get the frequencies of each value
-    ### in the foreground and background sets.
+    # for each criteria, get the frequencies of each value in the foreground
+    # and background sets
     fn = dict()
     bn = dict()
     for k in mse['fdict'].keys():
@@ -59,19 +56,18 @@ def train(trainfile,criteriafile,number):
     for i in mse['mirscan'](bqueries,mse['bogus_ms'],True):
         for j in bn.keys(): bn[j][i[j]]+=1
 
-    ### make header comment lines for the .matrix output with some basic
-    ### information about the current training run.
+    # make header comment lines for the .matrix output with some basic
+    # information about the current training run
     fcount = sum(fn[mse['fdict'].keys()[0]].values())
-    output = '# number = '+str(number)+', fcount = '+str(fcount)+'\n'
+    output = '# number = 0, fcount = '+str(fcount)+'\n'
     output += '# training file: '+trainfile+'\n'
     output += '# '+time.asctime(time.localtime())+'\n'
-    ol = fqueries[0].orgList()
+    ol = fqueries[0].organisms()
     ol.sort()
     output += '# org keys:\t'+'\t'.join(ol)+'\n'
 
-    ### for each criteria, for each value, generate a score and a line
-    ### for the .matrix output that documents that score and the data
-    ### that contributed to it.
+    # for each criteria, for each value, generate a score and a line for the
+    # .matrix output that documents that score and the data that originated it
     for k in mse['fdict'].keys():
         output += k+'\n'
         fcp = mse['fdict'][k].pseudo(fn[k])
@@ -90,75 +86,33 @@ def train(trainfile,criteriafile,number):
     return output
 
 
-def getBackground(trainfile,number):
-    backgroundFiles = mirscanModule.getBackgroundFiles(trainfile)
-    bqueries = []
-    if number==0:
-        for bgf in backgroundFiles: bqueries.extend(mirscanModule.get_queries(bgf))
-    else:
-        bgfToSize = dict()
-        for bgf in backgroundFiles: bgfToSize[bgf] = len(mirscanModule.get_queries(bgf))
-        if sum(bgfToSize.values()) < number:
-            raise ValueError("not enough queries ("+str(sum(bgfToSize.values()))+") for background of "+str(number))
-        else:
-            entries = range(sum(bgfToSize.values()))
-            random.shuffle(entries)
-            useEntries = entries[:number]
-            useEntries.sort()
-            bottomNum = 0
-            for bgf in backgroundFiles:
-                theseEntries = filter(lambda n: bottomNum <= n < bottomNum + bgfToSize[bgf], useEntries)
-                theseEntries = map(lambda n: n - bottomNum, theseEntries)
-                if len(theseEntries) > 0:
-                    theseQueries = mirscanModule.get_queries(bgf)
-                    bqueries.extend(map(lambda n: theseQueries[n], theseEntries))
-                bottomNum += bgfToSize[bgf]
-    if number!=0 and number!=len(bqueries): raise ValueError("number "+str(number)+" didn't match num queries: "+str(len(bqueries)))
-    return bqueries
+parser = argparse.ArgumentParser(description='''MiRscan3 Trainer.
+                This script takes a set of foreground and background miRNA
+                candidates (.train), a mirscan criteria file (.py) with rules
+                for their evaluation and outputs a scoring matrix file (.matrix)
+                which can be used for scoring additional miRNAs.''',
+            epilog='''Paulo Pinto, IEB-WWU, based on:
+                http://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html''')
 
-
-# mirscan_eval
-# ------------------------------------------------------------------------------
-# args: name of a mirscan criteria file (.py format)
-# returns: an environment (dictionary) generated by evaluating the input file
-# requires: any modules that the input file requires must be accessible from
-# the working directory from which THIS training script is being run.
-# ------------------------------------------------------------------------------
-def mirscan_eval(filename):
-    openfile = open(filename)
-    code = openfile.read()
-    openfile.close()
-    envi = dict()
-    exec code in envi
-    return envi
-
-
-
-parser = argparse.ArgumentParser(description='MiRscan3 Trainer',
-            epilog='Paulo Pinto, IEB-WWU, based on:\nhttp://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html')
-
-parser.add_argument(dest='trainFile',
+parser.add_argument(dest='trainfile',
                     help='the training file (.train)')
-parser.add_argument(dest='criteriaFile',
+parser.add_argument(dest='criteriafile',
                     help='the mirscan criteria file (.py)')
-
-parser.add_argument('-n', dest='number', type=int, default=0,
-                    help='the number of randomly-selected background seqs which will contribute to the score (default: all background sequences contribute)')
-parser.add_argument('-o', dest='matrixFile', default='stdout',
+parser.add_argument('-o', dest='matrixfile', default='stdout',
                     help='the output scoring matrix file (.matrix) (default: stdout)')
 
 args = parser.parse_args()
 
 # check that args corresponding to filenames have the proper extensions.
-if args.trainFile.split('.')[-1]!='train':
-    raise ValueError('training file must be ".train" format')
-if args.criteriaFile.split('.')[-1]!='py':
-    raise ValueError('criteria file must be formatted for python (".py")')
-if args.matrixFile.lower()!='stdout' and args.matrixFile.split('.')[-1]!='matrix':
-    raise ValueError('outfile must be ".matrix".')
+if args.trainfile.split('.')[-1] != 'train':
+    raise ValueError('Training file must be in \'.train\' format.')
+if args.criteriafile.split('.')[-1] != 'py':
+    raise ValueError('Criteria file must be in \'.py\' format.')
+if args.matrixfile.lower() != 'stdout' and args.matrixfile.split('.')[-1] != 'matrix':
+    raise ValueError('Output matrix file must be in \'.matrix\' format.')
 
 
-scorestring = train(args.trainFile,args.criteriaFile,args.number)
+matrixstring = train(args.trainfile, args.criteriafile)
 
-with (sys.stdout if args.matrixFile.lower()=='stdout' else open(args.matrixFile,'w')) as output:
-    output.write(scorestring)
+with (sys.stdout if args.matrixfile.lower() == 'stdout' else open(args.matrixfile, 'w')) as output:
+    output.write(matrixstring)
