@@ -35,14 +35,14 @@ def train(trainfile, criteriafile):
         bqueries.extend(ms.parse_query(bgf))
 
     # read the mirscan criteria and build a substitute scoring matrix
-    # (mse['bogus_ms']) to serve to the mirscan function when training.
+    # (mse['bogus_ms']) to serve to the mirscan function when training
     mse = ms.parse_criteria(criteriafile)
     mse['bogus_ms'] = dict()
     for k in mse['fdict'].keys():
         mse['bogus_ms'][k] = False
 
-    ### for each criteria, get the frequencies of each value
-    ### in the foreground and background sets.
+    # for each criteria, get the frequencies of each value in the foreground
+    # and background sets
     fn = dict()
     bn = dict()
     for k in mse['fdict'].keys():
@@ -56,19 +56,18 @@ def train(trainfile, criteriafile):
     for i in mse['mirscan'](bqueries,mse['bogus_ms'],True):
         for j in bn.keys(): bn[j][i[j]]+=1
 
-    ### make header comment lines for the .matrix output with some basic
-    ### information about the current training run.
+    # make header comment lines for the .matrix output with some basic
+    # information about the current training run
     fcount = sum(fn[mse['fdict'].keys()[0]].values())
-    output = '# number = '+str(number)+', fcount = '+str(fcount)+'\n'
+    output = '# number = 0, fcount = '+str(fcount)+'\n'
     output += '# training file: '+trainfile+'\n'
     output += '# '+time.asctime(time.localtime())+'\n'
     ol = fqueries[0].organisms()
     ol.sort()
     output += '# org keys:\t'+'\t'.join(ol)+'\n'
 
-    ### for each criteria, for each value, generate a score and a line
-    ### for the .matrix output that documents that score and the data
-    ### that contributed to it.
+    # for each criteria, for each value, generate a score and a line for the
+    # .matrix output that documents that score and the data that originated it
     for k in mse['fdict'].keys():
         output += k+'\n'
         fcp = mse['fdict'][k].pseudo(fn[k])
