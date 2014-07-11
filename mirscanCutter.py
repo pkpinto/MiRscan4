@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This script collects the scores calculated for the foreground cadidates and
-# finds the mean and standard deviation of the foreground score distribution.
-# It decides where to cut the background: the point where the score which is
-# one standard deviation below the lowest score from the foreground set.
-
 import sys, math, argparse
 import mirscanIO as msio
 
@@ -49,7 +44,7 @@ parser = argparse.ArgumentParser(description='''MiRscan3 Cutter.
                 foreground and  background set of miRNA candidates. It computes
                 the mean, standard deviation and minimum score of the
                 foreground set to establish a threshold value. When the query
-                file with background is provided (.train of .fax), it
+                file with background is provided (.fam of .fax), it
                 proceeds to filter those candidates with a score above the
                 threshold computed above.''',
             epilog='''Paulo Pinto, IEB-WWU, based on:
@@ -61,7 +56,7 @@ parser.add_argument(dest='back_scorefile',
                     help='the background score sheet file (.scr)')
 
 parser.add_argument('--query_in', dest='in_queryfile',
-                    help='the existing query file (.train or .fax)')
+                    help='the existing query file (.fam or .fax)')
 parser.add_argument('--query_out', dest='out_queryfile', default='stdout',
                     help='the filtered query file (.fax) (default: stdout)')
 
@@ -73,8 +68,8 @@ if args.back_scorefile.split('.')[-1] != 'scr':
     raise ValueError('Background score sheet file must be in \'.scr\' format.')
 
 if args.in_queryfile:
-    if args.in_queryfile.split('.')[-1] != 'train' and args.in_queryfile.split('.')[-1] != 'fax':
-        raise ValueError('Query file must be in \'.train\' or \'.fax\' format.')
+    if args.in_queryfile.split('.')[-1] != 'fam' and args.in_queryfile.split('.')[-1] != 'fax':
+        raise ValueError('Query file must be in \'.fam\' or \'.fax\' format.')
     if args.out_queryfile.lower() != 'stdout' and args.out_queryfile.split('.')[-1] != 'fax':
         raise ValueError('Output query file must be in \'.fax\' format.')
 
@@ -105,6 +100,5 @@ if args.in_queryfile:
     selected_candidates = filter(lambda c: c.name in names, candidates)
 
     if len(selected_candidates) != len(bcut):
-        raise ValueError('number of scored (' + str(len(bcut)) +') and queried (' \
-                        + str(len(selected_candidates)) + ') candidates don\'t match after filtering.')
+        raise ValueError('Number of scores and aquery candidates does not match.')
     msio.write_fax(selected_candidates, args.out_queryfile)
