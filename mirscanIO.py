@@ -10,21 +10,37 @@ class Candidate:
         name: Name of the candidate. It should be unique enough for the user to
             be able to distinguish between candidates based on the name alone.
     """
-    def __init__(self, name, org_seq_dict):
+    def __init__(self, name, org_hairpin_dict, org_mature_dict=None):
         """
         Initialises the object with a name and dictionary of sequences.
 
         Args:
             name: A string unique enough for the user to be able to distinguish
                 between candidates based on the name alone.
-            org_seq_dict: a dictionary whose keys are organism keys (strings)
-                and values are the corresponding miRNA hairpin sequences
-                (strings of DNA letters; permitted characters are 'ACGTN').
+            org_hairpin_dict: a dictionary whose keys are organism keys (strings)
+                and values are the corresponding DNA sequence of the miRNA
+                hairpin sequences (strings of DNA letters; permitted characters
+                are 'ATCGN').
+            org_mature_dict: a dictionary whose keys are organism keys (strings)
+                and values are the corresponding DNA sequence of the miRNA
+                mature strand sequences (strings of RNA letters; permitted
+                characters are 'ATCGN'). Mature strand sequences to all
+                organisms present in org_hairpin_dict must be provided,
+                additional organisms not present in org_hairpin_dict are ignored.
         """
         self.name = name
-        self._org_seq_dict = dict()
-        for org in org_seq_dict.keys():
-            self._org_seq_dict[org] = org_seq_dict[org]
+        self._org_hairpin_dict = dict()
+        for org in org_hairpin_dict.keys():
+            self._org_hairpin_dict[org] = org_hairpin_dict[org]
+        if org_mature_dict:
+            self._org_mature_dict = dict()
+            # ensure all organisms for which there is a harpin also have a
+            # mature strand assigned, but only those (extra mature sequences
+            # are ignored)
+            for org in self._org_hairpin_dict:
+                self._org_mature_dict[org] = org_mature_dict[org]
+        else:
+            self._org_mature_dict = None
 
     def organisms(self):
         """
@@ -32,14 +48,25 @@ class Candidate:
         'dm2') of the organisms for which the candidate has candidate hairpins
         that are supposedly orthologous.
         """
-        return self._org_seq_dict.keys()
+        return self._org_hairpin_dict.keys()
 
-    def seq(self, organism):
+    def hairpin(self, organism):
         """
-        Given a organism name (organism), returns the genome sequences (DNA)
-        corresponding to that candidate miRNA hairpin precursors.
+        Given a organism name (organism), returns the DNA sequence of the
+        candidate miRNA hairpin precursor.
         """
-        return self._org_seq_dict[organism]
+        return self._org_hairpin_dict[organism]
+
+    def mature(self, organism):
+        """
+        Given a organism name (organism), returns the DNA sequence of the
+        candidate miRNA mature strand. Returns None if no mature strand
+        sequences were provided on initialisation.
+        """
+        if self._org_mature_dict:
+            return self._org_hairpin_dict[organism]
+        else:
+            return None
 
 def parse_criteria(criteriafile):
     """
@@ -48,130 +75,100 @@ def parse_criteria(criteriafile):
     Any modules that the input file requires must be accessible from the
     working directory from which where this function is called.
     """
-    with open(criteriafile) as input:
+    with open(criteriafile, 'r') as input:
         code = input.read()
     criteria = dict()
     exec(code, criteria)
     return criteria
 
-def get_background_files(trainfile):
-    """
-    Retrieves the background set filenames that are referred to in a .train
-    file as a list of strings. If trainfile includes a relative path, it will
-    added to the filename of the background file.
-    """
-    trainfile_path = os.path.dirname(trainfile)
-    background_files = list()
-    with open(trainfile) as input:
-        for line in input:
-            line = line.strip()
-            if len(line) != 0 and line[0] == 'b':
-                background_files.append(os.path.join(trainfile_path, line.split()[1]))
-    return background_files
-
 def parse_query(queryfile):
     """
     Detects the type of the query file and calls the correct parser.
     """
-    if queryfile.split('.')[-1] == 'train':
-        return parse_train(queryfile)
+    if queryfile.split('.')[-1] == 'fam':
+        return parse_fam(queryfile)
     elif queryfile.split('.')[-1] == 'fax':
         return parse_fax(queryfile)
     else:
-        raise ValueError('Query file must be in \'.train\' or \'.fax\' format.')
+        raise ValueError('Query file must be in \'.fam\' or \'.fax\' format.')
 
-def parse_train(trainfile, starts=False):
+def parse_fam(famfile, starts=False):
     """
-    Retrieves the miRNA hairpin Candidates documented in a .train file.
-
-    If starts==True, then two items are returned: the first is the (always
-    returned) list of Candidates; the second is a list of dictionaries whose
-    keys are org names and values are integers indicating the start position of
-    the mature miRNA's 5p end in the corresponding hairpin sequence (indexed
-    from 0). The index of a candidate in the first returned list matches the
-    index of the start value dictionary in the second list.
+    Retrieves the miRNA hairpin and mature Candidates documented in a .fam file.
     """
-    uToT = string.maketrans('U','T')
-    candidates = []
-    startList = []
-    firstOne = True
-    with open(trainfile) as input:
+    RNAtoDNA = string.maketrans('U', 'T')
+    candidates = list()
+    open_block = False
+    with open(famfile, 'r') as input:
         for line in input:
-            columns = line.strip().split()
-            if len(columns)!=0 and not(columns[0][0]=='#' or columns[0]=='b'):
-                if columns[0]=='cn':
-                    if firstOne:
-                        firstOne = False
-                    else:
-                        candidates.append(Candidate(newName,newOrgToSeq))
-                        if starts:
-                            newStarts = dict()
-                            for org in newOrgToSeq.keys():
-                                newStarts[org] = newOrgToSeq[org].find(newOrgToMature[org])
-                            startList.append(newStarts)
-                    newName = columns[1]
-                    newOrgToSeq = dict()
-                    newOrgToMature = dict()
-                elif columns[0]=='cm':
-                    newOrgToMature[columns[1]] = columns[2].upper().translate(uToT,'')
-                elif columns[0]=='ch':
-                    newOrgToSeq[columns[1]] = columns[2].upper().translate(uToT,'')
-    if firstOne:
-        firstOne = False
-    else:
-        candidates.append(Candidate(newName,newOrgToSeq))
-        if starts:
-            newStarts = dict()
-            for org in newOrgToSeq.keys():
-                newStarts[org] = newOrgToSeq[org].find(newOrgToMature[org])
-            startList.append(newStarts)
-
-    __candidate_check(candidates)
-    return (candidates,startList) if starts else candidates
+            line = line.strip()
+            if len(line) == 0:
+                continue
+            elif line[0] == '#':
+                continue
+            else:
+                if line[0] == '>':
+                    if open_block:
+                        candidates.append(Candidate(__name, __org_hairpin_dict, __org_mature_dict))
+                        # open_block = False
+                    open_block = True
+                    __name = line[1:].strip()
+                    __org_hairpin_dict = dict()
+                    __org_mature_dict = dict()
+                else:
+                    strand,org,seq = line.split()
+                    if strand == 'h':
+                        __org_hairpin_dict[org] = seq.upper().translate(RNAtoDNA, '')
+                    elif strand == 'm':
+                        __org_mature_dict[org] = seq.upper().translate(RNAtoDNA, '')
+    if open_block:
+        candidates.append(Candidate(__name, __org_hairpin_dict, __org_mature_dict))
+        # open_block = False
+    return candidates
 
 def parse_fax(faxfile):
     """
     Retrieves the miRNA hairpin Candidates documented in a .fax file.
     """
-    uToT = string.maketrans('U','T')
-    candidates = []
-    firstOne = True
-    with open(faxfile) as input:
+    RNAtoDNA = string.maketrans('U', 'T')
+    candidates = list()
+    open_block = False
+    with open(faxfile, 'r') as input:
         for line in input:
             line = line.strip()
-            if len(line)!=0 and line[0]=='#':
-                line = ''
-            if len(line)!=0:
-                if line[0]=='>':
-                    if firstOne:
-                        firstOne = False
-                    else:
-                        candidates.append(Candidate(newName,newOrgToSeq))
-                    newName = line[1:]
-                    newOrgToSeq = dict()
+            if len(line) == 0:
+                continue
+            elif line[0] == '#':
+                continue
+            else:
+                if line[0] == '>':
+                    if open_block:
+                        candidates.append(Candidate(__name, __org_hairpin_dict))
+                        # open_block = False
+                    open_block = True
+                    __name = line[1:].strip()
+                    __org_hairpin_dict = dict()
                 else:
-                    columns = line.split()
-                    newOrgToSeq[columns[0]] = columns[1].upper().translate(uToT,'')
-    if firstOne:
-        firstOne = False
-    else:
-        candidates.append(Candidate(newName, newOrgToSeq))
-
-    __candidate_check(candidates)
+                    org,seq = line.split()
+                    __org_hairpin_dict[org] = seq.upper().translate(RNAtoDNA, '')
+    if open_block:
+        candidates.append(Candidate(__name, __org_hairpin_dict))
+        # open_block = False
+    __check_candidates(candidates)
     return candidates
 
 def write_fax(candidates, faxfile):
     """
     Writes a set of miRNA hairpin Candidates to a .fax formated file. If
-    filename=='stdout', writes to stdout.
+    faxfile=='stdout', writes to stdout.
     """
-    __candidate_check(candidates)
+    __check_candidates(candidates)
 
     with (sys.stdout if faxfile.lower() == 'stdout' else open(faxfile, 'w')) as output:
         for c in candidates:
             output.write('>' + c.name + '\n')
             for org in c.organisms():
-                output.write(org + '\t' + c.seq(org) + '\n')
+                output.write(org + ' ' + c.hairpin(org) + '\n')
 
 def parse_matrix(matrixfile):
     """
@@ -185,7 +182,7 @@ def parse_matrix(matrixfile):
         floating point numbers which are the scores corresponding to those
         particular feature values.
     """
-    with open(matrixfile) as input:
+    with open(matrixfile, 'r') as input:
         key = ''
         matrix = dict()
         first = 0
@@ -199,39 +196,35 @@ def parse_matrix(matrixfile):
                     matrix[key][new[0]] = float(new[1])
     return matrix
 
-def __candidate_check(candidates):
+def __check_candidates(candidates):
     """
     The candidates from a file should each have hairpins from the same set of
     organisms, and those orgs should be referred to with the same key strings.
     """
     if len(candidates) > 0:
-        initOrgs = candidates[0].organisms()
+        organism_list = candidates[0].organisms()
         if len(candidates) > 1:
             for c in candidates[1:]:
-                for org in initOrgs:
+                for org in organism_list:
                     if org not in c.organisms():
-                        raise ValueError("candidate "+c.name+" is missing org: "+org)
-                if len(c.organisms())!=len(initOrgs):
-                    raise ValueError("candidate "+c.name+" has wrong number of orgs: "+str(c.organisms()))
+                        raise ValueError('Candidate %s should contain a sequence for organism: %s' % (c.name, org))
+                if len(c.organisms()) != len(organism_list):
+                    raise ValueError('Candidate %s does not have sequences for the expected number of organisms.' % c.name)
 
 def parse_scores(scoresfile, keys=False):
     """
-    Retrieves the score sheets stroed in a .scr file. If keys are given, only
+    Retrieves the score sheets stored in a .scr file. If keys are given, only
     those score features will be retrieved.
     """
-    scores = list()
-    with open(scoresfile) as input:
-        for line in input:
-            columns = line.strip().split()
-            if len(columns) > 1 and len(columns[0]) > 0 and columns[0][0] != '#':
-                dd = dict()
-                for n in range(len(columns[1:])/2):
-                    dd[columns[2*n + 1]] = float(columns[2*n + 2])
-                if keys:
-                    d = {'name': columns[0]}
-                    for k in keys:
-                        d[k] = dd[k]
-                    scores.append(d)
-                else:
-                    scores.append(dd)
-    return scores
+    with open(scoresfile, 'r') as input:
+        unselected_scores = eval(input.read())
+    if keys:
+        scores = list()
+        for candidate_score in unselected_scores:
+            s = {'name': candidate_score['name']}
+            for k in keys:
+                s[k] = candidate_score[k]
+            scores.append(s)
+        return scores
+    else:
+        return unselected_scores

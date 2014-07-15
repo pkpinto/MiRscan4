@@ -80,6 +80,40 @@ class NumericalFeature:
                         if n+s*m>=0 and n+s*m<len(self.kl): new[str(self.kl[n+s*m])]+=kernel[m]*cd[str(self.kl[n])]
             return self.pseudo(new,iter+1)
 
+
+
+# get_folds
+# ------------------------------------------------------------------------------
+# args: sl: a list of sequences
+# returns: ind_folds: a list of bracket-notation folds corresponding to the mfe
+#               fold for the sequence of the same index in the sl list
+# requires: RNAfold (vienna package) is installed and executable at the command
+#               line by typing 'RNAfold' to begin an interactive session.
+# ------------------------------------------------------------------------------
+# uses RNAfold (zuker algorithm) to generate an mfe fold for each of the sequences
+# in sl
+def get_folds(sl):
+    ind_folds = []
+    if len(sl)>0:
+        ut_table = string.maketrans('U','T')
+        all_s = '\n'.join(sl)
+        fi,fo = os.popen2('RNAfold --noPS')
+        fi.write(all_s)
+        fi.close()
+        b = fo.read().split('\n')
+        fo.close()
+        b_index = 0
+        for s in sl:
+            if b[b_index].translate(ut_table)==s:
+                c = b[b_index+1].split(' ')
+                b_index+=2
+            else:
+                c = ['.'*len(s)]
+            ind_folds.append(c[0])
+    return ind_folds
+
+
+
 # make_start_list
 # ------------------------------------------------------------------------------
 # args: seq_list: a list of the query sequences with no gaps ('-' characters)
@@ -114,38 +148,6 @@ def make_start_list(seq_list,al,length):
     while pos_list[1].count(0)>0:
         pos_list=pos_list[1:]
     return pos_list
-
-
-
-# get_folds
-# ------------------------------------------------------------------------------
-# args: sl: a list of sequences
-# returns: ind_folds: a list of bracket-notation folds corresponding to the mfe
-#               fold for the sequence of the same index in the sl list
-# requires: RNAfold (vienna package) is installed and executable at the command
-#               line by typing 'RNAfold' to begin an interactive session.
-# ------------------------------------------------------------------------------
-# uses RNAfold (zuker algorithm) to generate an mfe fold for each of the sequences
-# in sl
-def get_folds(sl):
-    ind_folds = []
-    if len(sl)>0:
-        ut_table = string.maketrans('U','T')
-        all_s = '\n'.join(sl)
-        fi,fo = os.popen2('RNAfold --noPS')
-        fi.write(all_s)
-        fi.close()
-        b = fo.read().split('\n')
-        fo.close()
-        b_index = 0
-        for s in sl:
-            if b[b_index].translate(ut_table)==s:
-                c = b[b_index+1].split(' ')
-                b_index+=2
-            else:
-                c = ['.'*len(s)]
-            ind_folds.append(c[0])
-    return ind_folds
 
 
 

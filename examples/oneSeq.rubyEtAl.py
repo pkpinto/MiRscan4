@@ -47,7 +47,7 @@ def mirscan(candidates, md, train=False, starts=False):
         args['orgs'].sort()                         #
                                                     #
         # get the sequences, folds, and alignments  #
-        args['seqs'] = map(lambda org: qt.seq(org), args['orgs'])
+        args['seqs'] = map(lambda org: qt.hairpin(org), args['orgs'])
         args['ifolds'] = msc.get_folds(args['seqs'])
         args['al'] = args['seqs']                   #
                                                     #
