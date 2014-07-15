@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import sys, argparse
+from pprint import pprint
 import mirscanIO as msio
 
 parser = argparse.ArgumentParser(description='''MiRscan3 Scorer.
@@ -38,15 +39,6 @@ candidates = msio.parse_query(args.queryfile)
 mse = msio.parse_criteria(args.criteriafile)
 matrix = msio.parse_matrix(args.matrixfile)
 
-with (sys.stdout if args.scorefile.lower() == 'stdout' else open(args.scorefile, 'w')) as output:
 
-    # score each candidate and print out the results in ".scr" specified format.
-    for candScore in mse['mirscan'](candidates, matrix):
-        data = []
-        data.append(candScore['name'])
-        data.append('totscore '+str(candScore['totscore']))
-        # print out loc values for each species
-        locKeys = filter(lambda k: k[:4]=='loc_', candScore.keys())
-        for k in locKeys: data.append(k+' '+str(candScore[k]))
-        for k in mse['fdict'].keys(): data.append(k+' '+str(candScore[k]))
-        output.write(' '.join(data)+'\n')
+with (sys.stdout if args.scorefile.lower() == 'stdout' else open(args.scorefile, 'w')) as output:
+    pprint(mse['mirscan'](candidates, matrix), output, width=2000)

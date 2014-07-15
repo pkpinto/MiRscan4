@@ -75,7 +75,7 @@ def parse_criteria(criteriafile):
     Any modules that the input file requires must be accessible from the
     working directory from which where this function is called.
     """
-    with open(criteriafile) as input:
+    with open(criteriafile, 'r') as input:
         code = input.read()
     criteria = dict()
     exec(code, criteria)
@@ -182,7 +182,7 @@ def parse_matrix(matrixfile):
         floating point numbers which are the scores corresponding to those
         particular feature values.
     """
-    with open(matrixfile) as input:
+    with open(matrixfile, 'r') as input:
         key = ''
         matrix = dict()
         first = 0
@@ -216,19 +216,15 @@ def parse_scores(scoresfile, keys=False):
     Retrieves the score sheets stored in a .scr file. If keys are given, only
     those score features will be retrieved.
     """
-    scores = list()
-    with open(scoresfile) as input:
-        for line in input:
-            columns = line.strip().split()
-            if len(columns) > 1 and len(columns[0]) > 0 and columns[0][0] != '#':
-                dd = dict()
-                for n in range(len(columns[1:])/2):
-                    dd[columns[2*n + 1]] = float(columns[2*n + 2])
-                if keys:
-                    d = {'name': columns[0]}
-                    for k in keys:
-                        d[k] = dd[k]
-                    scores.append(d)
-                else:
-                    scores.append(dd)
-    return scores
+    with open(scoresfile, 'r') as input:
+        unselected_scores = eval(input.read())
+    if keys:
+        scores = list()
+        for candidate_score in unselected_scores:
+            s = {'name': candidate_score['name']}
+            for k in keys:
+                s[k] = candidate_score[k]
+            scores.append(s)
+        return scores
+    else:
+        return unselected_scores

@@ -8,9 +8,10 @@ def filtered_score(score, keys):
     """
     Computes total score as the sum of all scores identified in keys.
     """
-    total = 0
+    total = 0.0
     for k in keys:
-        total += score[k]
+        if k != 'name':
+            total += score[k]
     return total
 
 def compute_stats(mirs,kl):
@@ -18,14 +19,14 @@ def compute_stats(mirs,kl):
     Computes the mean score, stdev of scores, and min score calculated over
     filtered total score.
     """
-    a = map(lambda m: filtered_score(m,kl), mirs)
-    mean = sum(a)/len(a)
+    a = map(lambda m: filtered_score(m, kl), mirs)
+    mean = sum(a) / len(a)
     dev = 0
     for n in a:
-        diff = n-mean
-        dev += diff*diff
-    stdev = math.sqrt(dev/len(a))
-    return mean,stdev,min(a)
+        diff = n - mean
+        dev += diff * diff
+    stdev = math.sqrt(dev / len(a))
+    return mean, stdev, min(a)
 
 def filter_scores(scores, keys, threshold):
     """
@@ -74,31 +75,28 @@ if args.in_queryfile:
         raise ValueError('Output query file must be in \'.fax\' format.')
 
 
-# this list can be modified to change the behavior of score_cut.py, but here,
-# it is set to use the pre-computed (by mirscan) sum of all of the individual
-# feature scores, referred to as 'totscore' in mirscan's output.
+# List of selected feature scores. ('name' key is always selected.)
 score_keys = ['totscore']
 
 fs = msio.parse_scores(args.fore_scorefile, score_keys)
 bs = msio.parse_scores(args.back_scorefile, score_keys)
 
-# the score distribution for the foreground set is analyzed to select a score
-# threshold ('cut'), and the candidates are filtered for having scores above
-# the threshold ('bcut' are those candidates' score dictionaries).
-fmean,fstdev,fmin = compute_stats(fs, score_keys)
+# The score distribution for the foreground set is analyzed to select a score
+# threshold ('cut'), and the candidates which have scores above the threshold
+# ('bcut' are those candidates' score dictionaries).
+fmean, fstdev, fmin = compute_stats(fs, score_keys)
 cut = fmin - fstdev / 2.0
 bcut = filter_scores(bs, score_keys, cut)
 
 print('\t'.join(['foreground:', 'mean=' + str(fmean), 'stdev=' + str(fstdev), 'cut=' + str(cut)]))
 print('\t'.join(['background:', 'candidates above minimum=' + str(len(bcut)), 'total candidates=' + str(len(bs))]))
 
-# if the appropriate arguments were provided, the passing candidates will be
-# placed into a new .fax file.
+# If a source query file was provided, the passing candidates will be printed out.
 if args.in_queryfile:
     candidates = msio.parse_query(args.in_queryfile)
     names = {c['name'] for c in bcut}
     selected_candidates = filter(lambda c: c.name in names, candidates)
 
     if len(selected_candidates) != len(bcut):
-        raise ValueError('Number of scores and aquery candidates does not match.')
+        raise ValueError('Number of scores and query candidates does not match.')
     msio.write_fax(selected_candidates, args.out_queryfile)

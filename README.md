@@ -9,7 +9,7 @@ version has been release and applied to the detection of Drosophila miRNAs
 [Ruby et al. 2007].
 
 ### mirscanTrainer.py
-This script takes a set of foreground (.fam --- the training procedure requires
+This script takes a set of foreground (.fam, the training procedure requires
 mature strand sequences) and background (.fam or .fax) miRNA candidates, a
 mirscan criteria file (.py) with rules for their evaluation and outputs a
 scoring matrix file (.matrix) which can be used for scoring additional miRNAs.
@@ -56,6 +56,21 @@ m dm2 uaucacagccagcuuugaggagc
 h dm2 CTTCAACTGTCTTCAAAGTGGCAGTGACATGTTGTCAACAATATTCATATCACAGCCAGCTTTGAGGAGCGTTGCGG
 m dp3 uaucacagccagcuuugaggagc
 h dp3 CUGCGACGCUCUUUAAAGUGGCGGUGACGUGUUGGUAAUAAUAUUCAUAUCACAGCCAGCUUUGAGGAGCGUUGCGG
+```
+
+### .scr
+The score sheet file is simply a pprint'ed list of dictionaries. All entries
+(dictionaries) include the keys 'name', 'totscore' and one or more 'loc_XX'
+where XX are strings representing organisms. Additional keys are the keys of the
+fdict function dictionary specified in the criteria file.
+```
+[{'criteria_name_1': 0.654, 'criteria_name_2': -0.5, ... 'loc_dm2': 44, 'loc_dp3': 12, 'name': 'mir-2a-2', 'totscore': 12.974999999999998},
+ {'criteria_name_1': 0.44, 'criteria_name_2': -0.2, ... 'loc_dm2': 10, 'loc_dp3': 12, 'name': 'mir-2b-1', 'totscore': 8.472999999999997},
+```
+This file is easily parsed by direct eval'ing in python:
+```
+with open(scoresfile, 'r') as input:
+    scores = eval(input.read())
 ```
 
 ## Original MiRscan3
