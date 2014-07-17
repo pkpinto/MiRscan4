@@ -38,7 +38,7 @@ def mirscan(candidates, md, train=False, starts=False):
 ## USER SHOULD NOT ALTER THIS BOX
 #####################################################
     all_data = []                                   #
-    for qt in candidates:                           #
+    for n,qt in enumerate(candidates):              #
         args = dict()                               #
         args['le'] = mir_length                     #
         # this will guarantee that the org list will end up in the same
