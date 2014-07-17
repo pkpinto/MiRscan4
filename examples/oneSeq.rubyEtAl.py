@@ -415,7 +415,8 @@ for n in [0,8]:
 #            uses ar['compl_A12']
 # returns: the arthmatic mean of the values in the ar['compl_A12'] list
 # ------------------------------------------------------------------------------
-def method_complexity(self,ar): return sum(ar['compl'])/len(ar['compl'])
+def method_complexity(self,ar):
+    return sum(ar['compl'])/len(ar['compl'])
 fdict['compl'] = msc.NumericalFeature()
 fdict['compl'].kl = [-2,-1,0,1,2,3,4,5]
 fdict['compl'].fx = method_complexity

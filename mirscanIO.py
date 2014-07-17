@@ -10,7 +10,7 @@ class Candidate:
         name: Name of the candidate. It should be unique enough for the user to
             be able to distinguish between candidates based on the name alone.
     """
-    def __init__(self, name, org_hairpin_dict, org_mature_dict=None):
+    def __init__(self, name, org_hairpin_dict, org_mature_dict=None, org_fold_dict=None):
         """
         Initialises the object with a name and dictionary of sequences.
 
@@ -27,10 +27,15 @@ class Candidate:
                 characters are 'ATCGN'). Mature strand sequences to all
                 organisms present in org_hairpin_dict must be provided,
                 additional organisms not present in org_hairpin_dict are ignored.
-        """
+            org_fold_dict: a dictionary whose keys are organism keys (strings)
+                and values are the fold of the miRNAs in dot-bracket notation.
+                Folds for all organisms present in org_hairpin_dict must be
+                provided, additional organisms not present in org_hairpin_dict
+                are ignored.
+            """
         self.name = name
         self._org_hairpin_dict = dict()
-        for org in org_hairpin_dict.keys():
+        for org in org_hairpin_dict:
             self._org_hairpin_dict[org] = org_hairpin_dict[org]
         if org_mature_dict:
             self._org_mature_dict = dict()
@@ -41,6 +46,12 @@ class Candidate:
                 self._org_mature_dict[org] = org_mature_dict[org]
         else:
             self._org_mature_dict = None
+        if org_fold_dict:
+            self._org_fold_dict = dict()
+            for org in self._org_fold_dict:
+                self._org_fold_dict[org] = org_fold_dict[org]
+        else:
+            self._org_fold_dict = None
 
     def organisms(self):
         """
@@ -57,6 +68,11 @@ class Candidate:
         """
         return self._org_hairpin_dict[organism]
 
+    def has_matures(self):
+        """
+        Returns True when mature sequences are available
+        """
+        return True if self._org_mature_dict else False
     def mature(self, organism):
         """
         Given a organism name (organism), returns the DNA sequence of the
@@ -68,6 +84,35 @@ class Candidate:
         else:
             return None
 
+    def fold(self, organism):
+        """
+        Given a organism name (organism), returns the corresponding fold in
+        dot-bracket notation. Returns None if the folds are not available.
+        """
+        if self._org_fold_dict:
+            return self._org_fold_dict[organism]
+        else:
+            return None
+    def has_folds(self):
+        """
+        Returns True when fold information is available
+        """
+        return True if self._org_fold_dict else False
+
+    def compute_folds(self):
+        """
+        RNAfold (from the ViennaRNA package) must be executable from the command
+        line by typing 'RNAfold'.
+        """
+        fold_cmd = 'RNAfold --noPS'
+        self._org_fold_dict = dict()
+        for org in self._org_hairpin_dict:
+            fi,fo = os.popen2(fold_cmd)
+            fi.write(self._org_hairpin_dict[org])
+            fi.close()
+            fold = fo.read().split('\n')[1].split(' ')[0]
+            self._org_fold_dict[org] = fold
+
 def parse_criteria(criteriafile):
     """
     Retrieves the mirscan criteria stored in a .py file.
@@ -77,9 +122,9 @@ def parse_criteria(criteriafile):
     """
     with open(criteriafile, 'r') as input:
         code = input.read()
-    criteria = dict()
-    exec(code, criteria)
-    return criteria
+    environment = dict()
+    exec(code, environment)
+    return environment
 
 def parse_query(queryfile):
     """
@@ -207,7 +252,7 @@ def __check_candidates(candidates):
             for c in candidates[1:]:
                 for org in organism_list:
                     if org not in c.organisms():
-                        raise ValueError('Candidate %s should contain a sequence for organism: %s' % (c.name, org))
+                        raise ValueError('Candidate %s should contain a sequence for organism %s.' % (c.name, org))
                 if len(c.organisms()) != len(organism_list):
                     raise ValueError('Candidate %s does not have sequences for the expected number of organisms.' % c.name)
 
