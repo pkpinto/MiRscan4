@@ -65,7 +65,7 @@ def mirscan(candidates, md, train=False, starts=False):
 
         # get the complexity measurement for the hairpin
         args['compl'] = map(lambda a: max([complexity_pre_help(a,len(a)/5), \
-                                   complexity_pre_help(reverse_string(a), \
+                                   complexity_pre_help((a[::-1]), \
                                                        len(a)/5)]),args['seqs'])
 
 
@@ -142,20 +142,6 @@ fdict = dict()
 ### requirements.
 ### ------------------------------------------------------------------------------
 
-
-
-
-# reverse_string
-# ------------------------------------------------------------------------------
-# args: st: a string
-# returns: the same string with all characters appearing in the reverse order
-# ------------------------------------------------------------------------------
-# reverses the order of characters in a string
-def reverse_string(st):
-    li = []
-    for i in st: li.append(i)
-    li.reverse()
-    return ''.join(li)
 
 
 # make_bp_dicts
