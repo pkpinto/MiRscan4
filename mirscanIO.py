@@ -2,7 +2,7 @@
 
 import string, os, sys
 
-class Candidate:
+class Candidate(object):
     """A candidate is a potential miRNA hairpin or set of putatively orthologous
     miRNA hairpins.
 
@@ -124,7 +124,7 @@ def parse_criteria(criteriafile):
         code = input.read()
     environment = dict()
     exec(code, environment)
-    return environment
+    return environment['criteria']
 
 def parse_query(queryfile):
     """

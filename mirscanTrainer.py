@@ -4,9 +4,9 @@
 import math, sys, time, argparse
 import mirscanIO as msio
 
-def train(forefile, backfile, criteriafile):
+def train(fqueries, bqueries, criteria):
     """
-    For each criteria defined in criteriafile, for each possible output value,
+    For each criteria defined in criteria, for each possible output value,
     a score is determined which is the base 2 log of the ratio of the frequency
     of that output value in the foreground vs the frequency of that output
     value in the background. For each criteria, for each output value, the
@@ -15,69 +15,51 @@ def train(forefile, backfile, criteriafile):
 
     Output text is in the specified format of a '.matrix' file.
     """
-    # the foreground sets
-    fqueries = msio.parse_fam(forefile)
-    fstarts = list()
-    for c in fqueries:
-        __starts = dict()
-        for org in c.organisms():
-            __starts[org] = c.hairpin(org).find(c.mature(org))
-        fstarts.append(__starts)
 
-    # the background sets
-    bqueries = msio.parse_query(backfile)
+    fscores = criteria.score(fqueries)
+    bscores = criteria.score(bqueries)
 
-    # read the mirscan criteria and build a substitute scoring matrix
-    # (mse['bogus_ms']) to serve to the mirscan function when training
-    mse = msio.parse_criteria(criteriafile)
-    mse['bogus_ms'] = dict()
-    for k in mse['fdict'].keys():
-        mse['bogus_ms'][k] = False
+    # count the occurrence of each value in the foreground and background sets
+    fcount = dict()
+    bcount = dict()
+    for feature in criteria.features:
+        fcount[feature] = dict()
+        bcount[feature] = dict()
+        for v in criteria.features[feature].kl:
+            fcount[feature][str(v)] = 0
+            bcount[feature][str(v)] = 0
+    for cand in fscores:
+        for feature in criteria.features:
+            fcount[feature][cand[feature]] += 1
+    for cand in bscores:
+        for feature in criteria.features:
+            bcount[feature][cand[feature]] += 1
 
-    # for each criteria, get the frequencies of each value in the foreground
-    # and background sets
-    fn = dict()
-    bn = dict()
-    for k in mse['fdict'].keys():
-        fn[k] = dict()
-        bn[k] = dict()
-        for v in mse['fdict'][k].kl:
-            fn[k][str(v)] = 0
-            bn[k][str(v)] = 0
-    for i in mse['mirscan'](fqueries, mse['bogus_ms'], True, fstarts):
-        for j in fn.keys(): fn[j][i[j]]+=1
-    for i in mse['mirscan'](bqueries, mse['bogus_ms'], True):
-        for j in bn.keys(): bn[j][i[j]]+=1
-
-    # make header comment lines for the .matrix output with some basic
-    # information about the current training run
-    fcount = sum(fn[mse['fdict'].keys()[0]].values())
-    output = '# number = 0, fcount = '+str(fcount)+'\n'
-    output += '# training file: '+forefile+'\n'
-    output += '# '+time.asctime(time.localtime())+'\n'
-    ol = fqueries[0].organisms()
-    ol.sort()
-    output += '# org keys:\t'+'\t'.join(ol)+'\n'
+    output = '# ' + time.asctime(time.localtime()) + '\n'
 
     # for each criteria, for each value, generate a score and a line for the
     # .matrix output that documents that score and the data that originated it
-    for k in mse['fdict'].keys():
-        output += k+'\n'
-        fcp = mse['fdict'][k].pseudo(fn[k])
-        fcpt = sum(fcp.values())
-        fct = sum(fn[k].values())
-        bcp = mse['fdict'][k].pseudo(bn[k])
-        bcpt = sum(bcp.values())
-        bct = sum(bn[k].values())
-        for v in mse['fdict'][k].kl:
-            ff = float(fcp[str(v)])/fcpt
-            bf = float(bcp[str(v)])/bcpt
-            fraw = round(float(fn[k][str(v)])/fct,3)
-            braw = round(float(bn[k][str(v)])/bct,3)
-            scr = round(math.log(ff/bf,2),3)
-            output += '\t'+str(v)+'\t'+str(scr)+'\t'+str(fn[k][str(v)])+'\t'+str(bn[k][str(v)])+'\t'+str(fraw)+'\t'+str(braw)+'\n'
-    return output
+    for feature in criteria.features:
+        output += feature + '\n'
 
+        fcp = criteria.features[feature].pseudo(fcount[feature])
+        fcp_total = sum(fcp.values())
+        fc_total = sum(fcount[feature].values())
+
+        bcp = criteria.features[feature].pseudo(bcount[feature])
+        bcp_total = sum(bcp.values())
+        bc_total = sum(bcount[feature].values())
+
+        for v in criteria.features[feature].kl:
+            ff = float(fcp[str(v)]) / fcp_total
+            bf = float(bcp[str(v)]) / bcp_total
+            fraw = round(float(fcount[feature][str(v)]) / fc_total, 3)
+            braw = round(float(bcount[feature][str(v)]) / bc_total, 3)
+            scr = round(math.log(ff / bf, 2), 3)
+            output += '\t'.join(['', str(v), str(scr),\
+                                 str(fcount[feature][str(v)]), str(bcount[feature][str(v)]),\
+                                 str(fraw), str(braw)]) + '\n'
+    return output
 
 parser = argparse.ArgumentParser(description='''MiRscan3 Trainer.
                 This script takes a set of foreground (.fam --- the training
@@ -109,8 +91,12 @@ if args.criteriafile.split('.')[-1] != 'py':
 if args.matrixfile.lower() != 'stdout' and args.matrixfile.split('.')[-1] != 'matrix':
     raise ValueError('Output matrix file must be in \'.matrix\' format.')
 
-
-matrixstring = train(args.forefile, args.backfile, args.criteriafile)
+# the foreground set
+fqueries = msio.parse_fam(args.forefile)
+# the background set
+bqueries = msio.parse_query(args.backfile)
+# the mirscan criteria
+criteria = msio.parse_criteria(args.criteriafile)
 
 with (sys.stdout if args.matrixfile.lower() == 'stdout' else open(args.matrixfile, 'w')) as output:
-    output.write(matrixstring)
+    output.write(train(fqueries, bqueries, criteria))

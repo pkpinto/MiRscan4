@@ -34,11 +34,9 @@ if args.matrixfile.split('.')[-1] != 'matrix':
 if args.scorefile.lower() != 'stdout' and args.scorefile.split('.')[-1] != 'scr':
     raise ValueError('Output score sheet file must be in \'.scr\' format.')
 
-
 candidates = msio.parse_query(args.queryfile)
-mse = msio.parse_criteria(args.criteriafile)
+criteria = msio.parse_criteria(args.criteriafile)
 matrix = msio.parse_matrix(args.matrixfile)
 
-
 with (sys.stdout if args.scorefile.lower() == 'stdout' else open(args.scorefile, 'w')) as output:
-    pprint(mse['mirscan'](candidates, matrix), output, width=2000)
+    pprint(criteria.score(candidates, matrix), output, width=2000)
