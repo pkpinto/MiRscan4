@@ -64,7 +64,7 @@ class Candidate:
         sequences were provided on initialisation.
         """
         if self._org_mature_dict:
-            return self._org_hairpin_dict[organism]
+            return self._org_mature_dict[organism]
         else:
             return None
 
