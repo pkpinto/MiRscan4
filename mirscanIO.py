@@ -32,7 +32,7 @@ class Candidate(object):
                 Folds for all organisms present in org_hairpin_dict must be
                 provided, additional organisms not present in org_hairpin_dict
                 are ignored.
-            """
+        """
         self.name = name
         self._org_hairpin_dict = dict()
         for org in org_hairpin_dict:
@@ -259,7 +259,7 @@ def __check_candidates(candidates):
 def parse_scores(scoresfile, keys=False):
     """
     Retrieves the score sheets stored in a .scr file. If keys are given, only
-    those score features will be retrieved.
+    those score features will be retrieved. 'name' key is always returned.
     """
     with open(scoresfile, 'r') as input:
         unselected_scores = eval(input.read())

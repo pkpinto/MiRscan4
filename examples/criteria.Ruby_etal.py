@@ -20,13 +20,13 @@ can be made use of.
 data_items = dict()
 
 """
-Default miRNA length for this criteria.
+Default mature miRNA strand length for this criteria.
 """
 mir_length = 22
 
 # ------------------------------------------------------------------------------
 """
-Requires: cand_data['seqs']
+Requires: cand_data['hairpins']
 """
 
 def _complexity_helper(seq,level_max):
@@ -88,7 +88,7 @@ def _find_in_tree(tree,level,pos,seq,level_max,sl,build=False):
 def _set_complexity(self, cand_data):
     return [('compl', map(lambda s: max([_complexity_helper(s, len(s) / 5),
                                          _complexity_helper(s[::-1], len(s) / 5)]),
-                          cand_data['seqs']))]
+                          cand_data['hairpins']))]
 
 data_items['compl'] = msc.DataItem()
 data_items['compl'].fx = types.MethodType(_set_complexity, data_items['compl'])
@@ -106,7 +106,7 @@ features['compl'].bins = range(-2, 6)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 """
-Requires: cand_data['ifolds']
+Requires: cand_data['folds']
 """
 
 def _make_bp_dicts(fold):
@@ -212,7 +212,7 @@ def _make_bulge_list(fold, bpd):
 
 def _set_bp(self, cand_data):
     bpl, bpr, bpd, bulges = list(), list(), list(), list()
-    for fold in cand_data['ifolds']:
+    for fold in cand_data['folds']:
         _bpl, _bpr, _bpd = _make_bp_dicts(fold)
         bpl.append(_bpl)
         bpr.append(_bpr)
@@ -227,8 +227,8 @@ data_items['bp'] = msc.DataItem()
 data_items['bp'].fx = types.MethodType(_set_bp, data_items['bp'])
 
 """
-Requires: cand_data['seqs'], cand_data['bulgesl'], cand_data['pos'],
-            cand_data['le'], cand_data['al']
+Requires: cand_data['hairpins'], cand_data['bulgesl'], cand_data['mature_pos'],
+            cand_data['length'], cand_data['alignment']
 """
 
 def _bulge_sym_D_helper(seq,blg,pos,le):
@@ -256,17 +256,17 @@ def _get_bulge_sym_D(self, cand_data):
     for each bulge, counts number of unsymmetrically-bulged bases and sums them over all bulges
     uses individual structures
     """
-    return float(sum(map(lambda r: _bulge_sym_D_helper(cand_data['seqs'][r], cand_data['bulgesl'][r], cand_data['pos'][r], cand_data['le']),
-                         range(len(cand_data['al']))))) / len(cand_data['al'])
+    return float(sum(map(lambda r: _bulge_sym_D_helper(cand_data['hairpins'][r], cand_data['bulgesl'][r], cand_data['mature_pos'][r], cand_data['length']),
+                         range(len(cand_data['alignment']))))) / len(cand_data['alignment'])
 
 features['bulge_sym_D'] = msc.NumericalFeature()
 features['bulge_sym_D'].fx = types.MethodType(_get_bulge_sym_D, features['bulge_sym_D'])
 features['bulge_sym_D'].bins = range(10)
 
 """
-Requires: cand_data['seqs'], cand_data['ifolds'], cand_data['pos'],
-            cand_data['bpdl'], cand_data['al'], cand_data['iside'],
-            cand_data['al']
+Requires: cand_data['hairpins'], cand_data['folds'], cand_data['mature_pos'],
+            cand_data['bpdl'], cand_data['alignment'], cand_data['mature_side'],
+            cand_data['alignment']
 """
 
 def _loop_dis_G_helper(fold,seq,bpd,pos,le,side,give_edges=False):
@@ -363,18 +363,18 @@ def _get_loop_dis_G(self, cand_data):
                   list with the start and end coordinates of the loop
     returns: arithmatic mean of help returned values (loop lengths) over all candidate ortholog seqs
              if give_edges is not False, then it returns a list of two-item lists, where the
-             outer list items are folds from cand_data['ifolds'] and the inner list has the start and
+             outer list items are folds from cand_data['folds'] and the inner list has the start and
              end coordinates for that fold's loop (loop defined as the stretch between the miR and miR*)
 
     measures the loop size (loop defined as the stretch between the miR and miR*)
-    using cand_data['iside'] and individual structures
+    using cand_data['mature_side'] and individual structures
     an implementation for counting loop length which is more ornate
-    using cand_data['iside'] and individual structures
+    using cand_data['mature_side'] and individual structures
     """
     if self.give_edges:
-        return map(lambda r: _loop_dis_G_helper(cand_data['ifolds'][r],cand_data['seqs'][r],cand_data['bpdl'][r],cand_data['pos'][r],cand_data['le'],cand_data['iside'],True), range(len(cand_data['al'])))
+        return map(lambda r: _loop_dis_G_helper(cand_data['folds'][r],cand_data['hairpins'][r],cand_data['bpdl'][r],cand_data['mature_pos'][r],cand_data['length'],cand_data['mature_side'],True), range(len(cand_data['alignment'])))
     else:
-        return float(sum(map(lambda r: _loop_dis_G_helper(cand_data['ifolds'][r],cand_data['seqs'][r],cand_data['bpdl'][r],cand_data['pos'][r],cand_data['le'],cand_data['iside']), range(len(cand_data['al'])))))/len(cand_data['al'])
+        return float(sum(map(lambda r: _loop_dis_G_helper(cand_data['folds'][r],cand_data['hairpins'][r],cand_data['bpdl'][r],cand_data['mature_pos'][r],cand_data['length'],cand_data['mature_side']), range(len(cand_data['alignment'])))))/len(cand_data['alignment'])
 
 features['loop_dis_G'] = msc.NumericalFeature()
 features['loop_dis_G'].fx = types.MethodType(_get_loop_dis_G, features['loop_dis_G'])
@@ -383,20 +383,20 @@ features['loop_dis_G'].give_edges = False
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 """
-Requires: cand_data['seqs'], cand_data['pos']
+Requires: cand_data['hairpins'], cand_data['mature_pos']
 """
 
 def _get_nucX(self, cand_data):
     """
     args: cand_data: arguments dictionary 'cand_data' defined in mirscan.mirscan
-               uses cand_data['seqs'] and cand_data['pos']
+               uses cand_data['hairpins'] and cand_data['mature_pos']
     returns: a one-letter string
 
     returns the one-letter string of the nucleotide at the position number of the sequence
     string provided.  'N' appears in genome sequence files and is also included in the nucs
     list.  if another character appears, it is printed and returned (an exception will result).
     """
-    nuc = cand_data['seqs'][0][ cand_data['pos'][0] + self.position ]
+    nuc = cand_data['hairpins'][0][ cand_data['mature_pos'][0] + self.position ]
     if nuc not in self.bins:
         raise ValueError('Unknown nucleotide present in sequence: ' + nuc)
     return nuc
@@ -413,8 +413,8 @@ features['nuc9_s1'].position = 8
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 """
-Requires: cand_data['ifolds'], cand_data['pos'], cand_data['iside'],
-            cand_data['al']
+Requires: cand_data['folds'], cand_data['mature_pos'], cand_data['mature_side'],
+            cand_data['alignment']
 """
 
 def _bp_matrix_A_helper(fold, pos, side):
@@ -431,8 +431,8 @@ def _get_bp_matrix_A(self, cand_data):
     Returns 'paired' if position is paired in all structures, otherwise the
     function returns 'unpaired'.
     """
-    if float(sum(map(lambda r: _bp_matrix_A_helper(cand_data['ifolds'][r], self.position + cand_data['pos'][r], cand_data['iside']),\
-                     range(len(cand_data['al']))))) / len(cand_data['al']) == 1:
+    if float(sum(map(lambda r: _bp_matrix_A_helper(cand_data['folds'][r], self.position + cand_data['mature_pos'][r], cand_data['mature_side']),\
+                     range(len(cand_data['alignment']))))) / len(cand_data['alignment']) == 1:
         return 'paired'
     else:
         return 'unpaired'
@@ -445,6 +445,10 @@ for n in range(mir_length):
     features[feature_name].position = n
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+"""
+Requires: cand_data['folds'], cand_data['mature_pos'], cand_data['mature_side'],
+            cand_data['length'], cand_data['alignment']
+"""
 
 def _bp_matrix_C_helper(fold, pos, self_pos, side, le):
     fd = { '(': 1, ')': -1, '.': 0 }
@@ -469,8 +473,8 @@ def _get_bp_matrix_C(self, cand_data):
     Returns 'paired' if position is paired in all structures, otherwise the
     function returns 'unpaired'.
     """
-    if float(sum(map(lambda r: _bp_matrix_C_helper(cand_data['ifolds'][r], cand_data['pos'][r], self.position, cand_data['iside'], cand_data['le']),\
-                     range(len(cand_data['al']))))) / len(cand_data['al']) == 1:
+    if float(sum(map(lambda r: _bp_matrix_C_helper(cand_data['folds'][r], cand_data['mature_pos'][r], self.position, cand_data['mature_side'], cand_data['length']),\
+                     range(len(cand_data['alignment']))))) / len(cand_data['alignment']) == 1:
         return 'paired'
     else:
         return 'unpaired'
@@ -507,9 +511,9 @@ criteria = msc.Criteria(mir_length, features, data_items)
 # #               self.pos is the same in all sequences; otherwise, returns 'non'
 # # ------------------------------------------------------------------------------
 # def method_con(self,ar,more_args=False):
-# seqs = ar['seqs']
+# seqs = ar['hairpins']
 # if more_args:
-# pos = map(lambda n: n+more_args['start'], ar['pos'])
+# pos = map(lambda n: n+more_args['start'], ar['mature_pos'])
 # all_match = 0
 # for n in range(more_args['length']):
 #     add_this = 1
@@ -518,7 +522,7 @@ criteria = msc.Criteria(mir_length, features, data_items)
 #     all_match += add_this
 # return all_match
 # else:
-# pos = map(lambda n: n+self.pos, ar['pos'])
+# pos = map(lambda n: n+self.pos, ar['mature_pos'])
 # all_match = 'con'
 # for n in range(1,len(seqs)):
 #     if seqs[0][pos[0]]!=seqs[n][pos[n]]: all_match = 'non'
@@ -557,7 +561,7 @@ criteria = msc.Criteria(mir_length, features, data_items)
 # # looks at loop conservation; uses method6_G
 # def method9_B(self,ar):
 # loop_list = method6_G(self,ar,1)
-# seq_list = map(lambda r: ar['seqs'][r][loop_list[r][0]:loop_list[r][1]+1],range(len(loop_list)))
+# seq_list = map(lambda r: ar['hairpins'][r][loop_list[r][0]:loop_list[r][1]+1],range(len(loop_list)))
 # if max(map(len,seq_list))==0: return 0
 # else:
 # al = get_alignment(seq_list)

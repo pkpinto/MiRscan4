@@ -108,44 +108,62 @@ class DataItem:
         return None
 
 class Criteria(object):
-    def __init__(self, mir_length, features, data_items):
+    """
+    Class used for, given a dictionary of Features and DataItems, scoring sets
+    of candidates miRNA sequences.
+    """
+    def __init__(self, mir_length, features, data_items=None):
+        """Initialises the object with a dictionary of Features and DataItems.
+
+        Args:
+            mir_length: The Default mature miRNA strand length for this
+                criteria.
+            features: The dictionary of all features considered for this
+                criteria. All elements must be an instance of the Feature class
+                (or a child of it, eg. StringFeature).
+            data_items: The dictionary of DataItem which initialise required
+                items of the cand_score dictionary used in function
+                Criteria.score. Items defined here should not depend between
+                themselves for the execution order is not guaranteed. However,
+                the standard items are always accessible and can be made use of.
+        """
+        self.mir_length = mir_length
         self.features = features
         self.data_items = data_items
-        self.mir_length = mir_length
 
     def score(self, candidates, matrix=None):
         """
-        Scores a set of candidates.
+        Scores a set of Candidates. Returns a list of scores, one for each
+        candidate. The candidate score is computed from a dictionary of
+        features. Each feature score is then compared to the pre-computed matrix
+        reference value.
 
         If a scoring matrix is not provided, the function falls into training
-        mode.
-
-        When in training mode, if mature sequences are available (foreground
-        set) only their start positions are considered, if they are not
-        available (background set) a random start position is chosen.
+        mode. This allows for a scoring matrix to be created. Each feature score
+        is simply returned for further processing (see mirscanTrainer).
         """
         cand_score = list()
         for cand in candidates:
             # Candidate data dictionary stores a variety of variables useful for
             # assessing the score of this candidate
             cand_data = dict()
-            cand_data['le'] = self.mir_length
+            cand_data['length'] = self.mir_length
             # Ensure that the list of organisms is identical across candidates
-            cand_data['orgs'] = cand.organisms()
-            cand_data['orgs'].sort()
+            cand_data['organisms'] = cand.organisms()
+            cand_data['organisms'].sort()
 
             # sequences
-            cand_data['seqs'] = map(lambda org: cand.hairpin(org), cand_data['orgs'])
+            cand_data['hairpins'] = map(lambda org: cand.hairpin(org), cand_data['organisms'])
             # folds
             if not cand.has_folds():
                 cand.compute_folds()
-            cand_data['ifolds'] = map(lambda org: cand.fold(org), cand_data['orgs'])
+            cand_data['folds'] = map(lambda org: cand.fold(org), cand_data['organisms'])
             # alignments
             if len(cand.organisms()) > 1:
-                # cand_data['al'] = get_alignment(args['seqs'])
-                cand_data['al'] = cand_data['seqs'][0]
+                # cand_data['alignment'] = get_alignment(args['hairpins'])
+                cand_data['alignment'] = cand_data['hairpins'][0]
             else:
-                cand_data['al'] = cand_data['seqs']
+                cand_data['alignment'] = cand_data['hairpins']
 
             # Extra entries to cand_data defined in the criteria file
             for ditem in self.data_items:
@@ -155,21 +173,21 @@ class Criteria(object):
             # Get the scores for all of the possible (or specified) start positions
             candlist = []
             if cand.has_matures():
-                cand_data['pos'] = map(lambda org: cand.hairpin(org).find(cand.mature(org)), cand_data['orgs'])
-                cand_data['iside'] = self._pick_side(cand_data['ifolds'], cand_data['seqs'], cand_data['pos'], cand_data['le'])
+                cand_data['mature_pos'] = map(lambda org: cand.hairpin(org).find(cand.mature(org)), cand_data['organisms'])
+                cand_data['mature_side'] = self._pick_side(cand_data['folds'], cand_data['hairpins'], cand_data['mature_pos'], cand_data['length'])
                 candlist.append(self._cand_score(cand_data, matrix))
             else:
-                start_list = self._make_start_list(cand_data['seqs'], cand_data['al'], cand_data['le'])
+                start_list = self._make_start_list(cand_data['hairpins'], cand_data['alignment'], cand_data['length'])
                 # training mode: pick just one start point
                 if not matrix:
                     start_list = [random.choice(start_list)]
                 for i in start_list:
-                    cand_data['pos'] = i
-                    cand_data['iside'] = self._pick_side(cand_data['ifolds'], cand_data['seqs'], cand_data['pos'], cand_data['le'])
+                    cand_data['mature_pos'] = i
+                    cand_data['mature_side'] = self._pick_side(cand_data['folds'], cand_data['hairpins'], cand_data['mature_pos'], cand_data['length'])
                     candlist.append(self._cand_score(cand_data, matrix))
 
             # sort the start position options by the totscores and return the highest
-            npl = [(x['totscore'],x) for x in candlist]
+            npl = [(x['total_score'],x) for x in candlist]
             npl.sort()
             candlist = [val for (key, val) in npl]
             bestCand = candlist[-1]
@@ -184,7 +202,7 @@ class Criteria(object):
               matrix: .matrix dictionary (output from parse_matrix)
         returns: score: dictionary of scores for each feature; keys refer to features (they
                       are the keys from fdict) and values are the assigned scores; the
-                      additional key 'totscore' is bound to the sum of scores, and 'loc'
+                      additional key 'total_score' is bound to the sum of scores, and 'mature_pos'
                       is bound to the integer of the position number in the first sequence
                       assuming that the first position is labelled "1".
 
@@ -199,9 +217,9 @@ class Criteria(object):
                 score[feature] = matrix[feature][ self.features[feature].compute_bin(cand_data) ]
             else:
                 score[feature] = self.features[feature].fx(cand_data)
-        score['totscore'] = sum(score.values()) if matrix else -1
-        for i,org in enumerate(cand_data['orgs']):
-            score['loc_' + org] = cand_data['pos'][i] + 1
+        score['total_score'] = sum(score.values()) if matrix else -1
+        for i,org in enumerate(cand_data['organisms']):
+            score['mature_pos_' + org] = cand_data['mature_pos'][i] + 1
         return score
 
     def _make_start_list(self,seq_list,al,length):
@@ -290,11 +308,6 @@ class Criteria(object):
 
 
 
-
-
-#
-#
-#
 # ##############################################################
 # ####  GENERATING ALIGNMENTS  #################################
 # ##############################################################
@@ -307,6 +320,7 @@ class Criteria(object):
 # finds alignment of two sequences
 # def get_alignment(sa):
 #     return global_align(sa[0],sa[1],-8,-3,1,-3,-2,'get traceback')[1:]
+#
 #
 # def make_init_array(a,b):
 #     full = []
@@ -333,7 +347,6 @@ class Criteria(object):
 #     for j in range(1,len(new[0])):
 #         new[0][j] = 2
 #     return new
-#
 #
 #
 # # ------------------------------------------------------------------------------
@@ -407,7 +420,6 @@ class Criteria(object):
 #                 s[w][2] += -1
 #         return [max_score_coord[0],s[2][1],s[1][1]]
 #     else: return max_score_coord[0]
-#
 #
 #
 # # ------------------------------------------------------------------------------

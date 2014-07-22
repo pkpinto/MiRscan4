@@ -14,12 +14,12 @@ def filtered_score(score, keys):
             total += score[k]
     return total
 
-def compute_stats(mirs,kl):
+def compute_stats(mirs, keys):
     """
     Computes the mean score, stdev of scores, and min score calculated over
     filtered total score.
     """
-    a = map(lambda m: filtered_score(m, kl), mirs)
+    a = map(lambda m: filtered_score(m, keys), mirs)
     mean = sum(a) / len(a)
     dev = 0
     for n in a:
@@ -38,7 +38,6 @@ def filter_scores(scores, keys, threshold):
         if filtered_score(s, keys) > threshold:
             selected.append(s)
     return selected
-
 
 parser = argparse.ArgumentParser(description='''MiRscan3 Cutter.
                 This script compares the score sheet files (.scr) of both the
