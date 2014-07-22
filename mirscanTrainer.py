@@ -6,16 +6,26 @@ import mirscanIO as msio
 
 def train(fqueries, bqueries, criteria):
     """
-    For each criteria defined in criteria, for each possible output value,
-    a score is determined which is the base 2 log of the ratio of the frequency
-    of that output value in the foreground vs the frequency of that output
-    value in the background. For each criteria, for each output value, the
-    foreground and background frequencies are figured such that they include
-    pseudocounts that are added according to that feature's 'pseudo' function.
+    Given a set of foreground (fqueries, must include information where the
+    mature strands are located in the hairpin) and background candidates
+    (bqueries), this method first computes the raw scores for all features
+    described in the critera. Then, separately for the foreground and the
+    background set, the frequency of all possible values for each feature is
+    computed.
 
-    Output text is in the specified format of a '.matrix' file.
+    For the ouput, each feature is considered in turn. The distribution over
+    possible values for a particular feature is smoothed by calling the
+    criteria.features[feature].smooth function. The final score for each value
+    is given by the logarithm base 2 of the ratio between the (smoothed)
+    frequency measured for the foreground set to the (smoothed) frequency in the
+    background set.
+
+    Further output includes, per feature value, of the counts made in the
+    foreground and the background sets and the corresponding unsmoothed
+    frequencies.
+
+    The function returns a string formated in the .matrix format.
     """
-
     fscores = criteria.score(fqueries)
     bscores = criteria.score(bqueries)
 
@@ -23,42 +33,40 @@ def train(fqueries, bqueries, criteria):
     fcount = dict()
     bcount = dict()
     for feature in criteria.features:
-        fcount[feature] = dict()
-        bcount[feature] = dict()
-        for v in criteria.features[feature].kl:
-            fcount[feature][str(v)] = 0
-            bcount[feature][str(v)] = 0
-    for cand in fscores:
+        fcount[feature] = {b: 0 for b in criteria.features[feature].bins}
+        bcount[feature] = {b: 0 for b in criteria.features[feature].bins}
+    for cand_score in fscores:
         for feature in criteria.features:
-            fcount[feature][cand[feature]] += 1
-    for cand in bscores:
+            fcount[feature][criteria.features[feature].pick_bin(cand_score[feature])] += 1
+    for cand_score in bscores:
         for feature in criteria.features:
-            bcount[feature][cand[feature]] += 1
+            bcount[feature][criteria.features[feature].pick_bin(cand_score[feature])] += 1
 
     output = '# ' + time.asctime(time.localtime()) + '\n'
 
-    # for each criteria, for each value, generate a score and a line for the
-    # .matrix output that documents that score and the data that originated it
     for feature in criteria.features:
         output += feature + '\n'
 
-        fcp = criteria.features[feature].pseudo(fcount[feature])
-        fcp_total = sum(fcp.values())
-        fc_total = sum(fcount[feature].values())
+        # sum counts for feature values
+        ffeature_sum = sum(fcount[feature].values())
+        bfeature_sum = sum(bcount[feature].values())
+        # smooth the count distribution
+        ffeature_smooth = criteria.features[feature].smooth(fcount[feature])
+        bfeature_smooth = criteria.features[feature].smooth(bcount[feature])
+        # and sum the values
+        ffeature_smooth_sum = sum(ffeature_smooth.values())
+        bfeature_smooth_sum = sum(bfeature_smooth.values())
 
-        bcp = criteria.features[feature].pseudo(bcount[feature])
-        bcp_total = sum(bcp.values())
-        bc_total = sum(bcount[feature].values())
+        for b in criteria.features[feature].bins:
+            ffreq_smooth = 1.0 * ffeature_smooth[b] / ffeature_smooth_sum
+            bfreq_smooth = 1.0 * bfeature_smooth[b] / bfeature_smooth_sum
+            score = round(math.log(ffreq_smooth / bfreq_smooth, 2), 3)
+            ffreq = round(1.0 * fcount[feature][b] / ffeature_sum, 3)
+            bfreq = round(1.0 * bcount[feature][b] / bfeature_sum, 3)
+            output += '\t'.join(['', str(b), str(score),\
+                                 str(fcount[feature][b]), str(bcount[feature][b]),\
+                                 str(ffreq), str(bfreq)]) + '\n'
 
-        for v in criteria.features[feature].kl:
-            ff = float(fcp[str(v)]) / fcp_total
-            bf = float(bcp[str(v)]) / bcp_total
-            fraw = round(float(fcount[feature][str(v)]) / fc_total, 3)
-            braw = round(float(bcount[feature][str(v)]) / bc_total, 3)
-            scr = round(math.log(ff / bf, 2), 3)
-            output += '\t'.join(['', str(v), str(scr),\
-                                 str(fcount[feature][str(v)]), str(bcount[feature][str(v)]),\
-                                 str(fraw), str(braw)]) + '\n'
     return output
 
 parser = argparse.ArgumentParser(description='''MiRscan3 Trainer.

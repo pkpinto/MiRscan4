@@ -2,104 +2,116 @@
 
 import string, os, random
 
-# Hairpin criteria objects (features)
-# ------------------------------------------------------------------------------
-# these objects are used more like dictionaries, simply to cluster together attributes
-# that are related to the evaluation of a particular hairpin feature.  the user may
-# add additional attributes to a feature object as needed; the requirement is that
-# each object, in addition to having the attributes implemented below, also be
-# given an attribute called 'fx' and another called 'kl' (described below).
-#
-# all f(x) methods for obtaining values associated with a scoring criteria will
-# be the "fx" method for an object of the criteria_measure class, which will inherit
-# from an instance of either the StringFeature or NumericalFeature class.  each of those
-# classes has an internal state "type", which returns either 'string' or 'number' as
-# a string, "kl" which is a list of possible key values from the scoring tables, and
-# "kv", which is a method for taking a value returned by a "fx" method and turning it into
-# an appropriate key value.  note that numerical values in kl must be in ascending order.
-# there is also a function "pseudo" for each of the types of features which takes a string
-# of counts and adds pseudocounts.
 class Feature(object):
-    def __init__(self):
-        pass
-    def fx(self):
-        return None
-    def kv(self):
-        return None
-    def kl(self):
-        return None
-    def ex(self, *args):
-        return self.kv(self.fx(*args))
-    def pseudo(self):
-        return None
+    """
+    Base class defining a computable feature of miRNA candidates. Usually a
+    derived class (see below) should be used instead.
 
-# StringFeature
-# ------------------------------------------------------------------------------
-# attributes: fx: function for evaluating the feature in question (initially, boolean False);
-#                  must take self and args dictionary as only arguments and return a string
-#             type: string labelling the instance as a 'string'-type feature
-#             kl: list of all possible return values that are accepted for that feature
-#             kv: function for binning string returned by fx.  for strings, the arg value x
-#                  is just returned
-#             ex: function
-#             pseudo: function
-# ------------------------------------------------------------------------------
+    This class defines a function (fx) used for computing the value associated
+    with the feature. However, values are stored in bins keyed by values defined
+    in a list of possible values (keys)
+
+    Attributes:
+        bins: List of allowed values for values of the feature. If the computed
+              values are continuous, the bin function makes the translation to
+              a discrete value.
+    """
+    def __init__(self):
+        bins = None
+    def fx(self, *args):
+        """
+        Function used to compute the value of the feature.
+        """
+        return None
+    def pick_bin(self, val):
+        """
+        Bins the value of the feature (computed by fx) into the correct binned
+        value (one of the values in bins).
+        """
+        return val
+    def compute_bin(self, *args):
+        """
+        Shortcut method which computes the ferature value with fx and proceeds
+        bin it with pick_bin.
+        """
+        return self.pick_bin(self.fx(*args))
+    def smooth(self, count):
+        """
+        Given a set of values (count) counting the frequency of each bin value,
+        this functions distributes the counts with the intent of smoothing the
+        overall shape of the distribution.
+
+        The default implementation does not really smooth the distribution, it
+        just increments every bin by one. Though it effectivelly smoothens the
+        distribution, its main objective is to prevent zero count bins which
+        could cause divide-by-zero errors in processing.
+        """
+        return {b:(count[b] + 1) for b in count}
+
 class StringFeature(Feature):
     def __init__(self):
         super(StringFeature, self).__init__()
-    def kv(self,x):
-        return x
-    def pseudo(self,cd):
-        new = dict()
-        for k in cd.keys():
-            new[k] = cd[k]+1
-        return new
 
-# NumericalFeature
-# ------------------------------------------------------------------------------
-# attributes: fx: function for evaluating the feature in question (initially, boolean False);
-#                  must take self and args dictionary as only arguments and return a number
-#             type: string labelling the instance as a 'number'-type feature
-#             kl: list of all possible return values (in ascending numerical order)
-#                  that are accepted for that feature
-#             kv: function for binning number returned by fx.  for numbers, the arg value x
-#                  is placed in the kl bin where the kl value is less than or equal to x and
-#                  where the next bin's value (if there is one) is greater than x
-#             ex: function
-#             pseudo: function
-# ------------------------------------------------------------------------------
 class NumericalFeature(Feature):
+    """
+    Feature described by a numerical value. If it is a continuous value, bin
+    discretises it into one of the values of bins.
+
+    Attributes:
+        bins: List of allowed values for values of the feature. They must be in
+        ascending order. Requires that len(bins) >= 3
+    """
     def __init__(self):
         super(NumericalFeature, self).__init__()
-    def kv(self,x):
-        p = 1
-        while p<len(self.kl) and self.kl[p]<=x: p+=1
-        return str(self.kl[p-1])
-    def pseudo(self,cd,iter=0):
-        kernel = [.75,.125]
-        new = dict()
-        for k in cd.keys(): new[k]=0
-        if iter==2:
-            for k in cd.keys():
-                new[k] = cd[k]+1
-            return new
+        self.smooth_round = 0
+    def pick_bin(self, val):
+        """
+        Bins the value of the feature (computed by fx) into the correct binned
+        value (one of the values in bins).
+
+        The computed value val is placed in the bin where the value is less or
+        equal than val and the value in the next bin is greater than val.
+        """
+        bin_idx = 1
+        while bin_idx < len(self.bins) and self.bins[bin_idx] <= val:
+            bin_idx += 1
+        return self.bins[bin_idx - 1]
+    def smooth(self, count):
+        """
+        Given a dict of values (count) counting the frequency of each bin value,
+        this functions distributes the counts with the intent of smoothing the
+        overall shape of the distribution.
+        """
+        if self.smooth_round == 2:
+            self.smooth_round = 0
+            return super(NumericalFeature, self).smooth(count)
         else:
-            for n in range(len(self.kl)):
-                new[str(self.kl[n])]+=kernel[0]*cd[str(self.kl[n])]
-                for m in range(1,len(kernel)):
-                    for s in [-1,1]:
-                        if n+s*m>=0 and n+s*m<len(self.kl): new[str(self.kl[n+s*m])]+=kernel[m]*cd[str(self.kl[n])]
-            return self.pseudo(new,iter+1)
+            count_smooth = {b: 0 for b in count}
+            kernel = {-1: 0.125, 0: 0.75, 1: 0.125}
+            for n in range(1, len(self.bins) - 1):
+                for x in kernel:
+                    count_smooth[self.bins[n + x]] += kernel[x] * count[self.bins[n]]
+            # left-most count
+            count_smooth[self.bins[0]] += (1 - kernel[1]) * count[self.bins[0]]
+            count_smooth[self.bins[1]] += kernel[1] * count[self.bins[0]]
+            # right-most count
+            count_smooth[self.bins[-1]] += (1 - kernel[-1]) * count[self.bins[-1]]
+            count_smooth[self.bins[-2]] += kernel[-1] * count[self.bins[-1]]
+            self.smooth_round += 1
+            return self.smooth(count_smooth)
 
 class DataItem:
-    def __init__(self):
-        self.fx = None
+    def fx(self, *args):
+        """
+        Function used to compute the value of the feature.
+        """
+        return None
 
 class Criteria(object):
-    def __init__(self, features, data_items):
+    def __init__(self, mir_length, features, data_items):
         self.features = features
         self.data_items = data_items
-        self.mir_length = 22
+        self.mir_length = mir_length
 
     def score(self, candidates, matrix=None):
         """
@@ -131,7 +143,7 @@ class Criteria(object):
             # alignments
             if len(cand.organisms()) > 1:
                 # cand_data['al'] = get_alignment(args['seqs'])
-                cand_data['al'] = cand_data['seqs']
+                cand_data['al'] = cand_data['seqs'][0]
             else:
                 cand_data['al'] = cand_data['seqs']
 
@@ -175,7 +187,7 @@ class Criteria(object):
                       additional key 'totscore' is bound to the sum of scores, and 'loc'
                       is bound to the integer of the position number in the first sequence
                       assuming that the first position is labelled "1".
-        ------------------------------------------------------------------------------
+
         determines the mirscan score for a 21-mer at a particular position in the sequence
         referenced by ref#, position as indicated by the argument, by obtaining scores for
         each of the features in the matrix data structure return: dictionary with keys as
@@ -184,10 +196,10 @@ class Criteria(object):
         score = dict()
         for feature in self.features:
             if matrix:
-                score[feature] = matrix[feature][self.features[feature].ex(cand_data)]
+                score[feature] = matrix[feature][ self.features[feature].compute_bin(cand_data) ]
             else:
-                score[feature] = self.features[feature].ex(cand_data)
-        score['totscore'] = sum(score.values()) if matrix else 'bogus_value'
+                score[feature] = self.features[feature].fx(cand_data)
+        score['totscore'] = sum(score.values()) if matrix else -1
         for i,org in enumerate(cand_data['orgs']):
             score['loc_' + org] = cand_data['pos'][i] + 1
         return score
@@ -287,6 +299,14 @@ class Criteria(object):
 # ####  GENERATING ALIGNMENTS  #################################
 # ##############################################################
 #
+# get_alignment
+# ------------------------------------------------------------------------------
+# args: two sequences
+# returns: alignment as list of strings (input sequences + gaps)
+# ------------------------------------------------------------------------------
+# finds alignment of two sequences
+# def get_alignment(sa):
+#     return global_align(sa[0],sa[1],-8,-3,1,-3,-2,'get traceback')[1:]
 #
 # def make_init_array(a,b):
 #     full = []

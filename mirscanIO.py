@@ -80,7 +80,7 @@ class Candidate(object):
         sequences were provided on initialisation.
         """
         if self._org_mature_dict:
-            return self._org_hairpin_dict[organism]
+            return self._org_mature_dict[organism]
         else:
             return None
 
@@ -231,14 +231,14 @@ def parse_matrix(matrixfile):
         key = ''
         matrix = dict()
         first = 0
-        for i in input.read().split('\n'):
-            if not(i=='' or i[0]=='#'):
-                if i==i.lstrip():
-                    key = i.lstrip().rstrip()
+        for line in input.read().split('\n'):
+            if not(line == '' or line[0]=='#'):
+                if line == line.lstrip():
+                    key = line.strip()
                     matrix[key] = dict()
                 else:
-                    new = filter(lambda a: a!='', i.split('\t'))
-                    matrix[key][new[0]] = float(new[1])
+                    word = filter(lambda w: w != '', line.split('\t'))
+                    matrix[key][word[0]] = float(word[1])
     return matrix
 
 def __check_candidates(candidates):
