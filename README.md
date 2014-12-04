@@ -1,4 +1,4 @@
-MiRscan3
+MiRscan4
 ========
 
 Fork of MiRscan3, fixing bugs and updating the code.
@@ -73,7 +73,7 @@ with open(scoresfile, 'r') as input:
     scores = eval(input.read())
 ```
 
-## Original MiRscan3
+## MiRscan3
 The most recent unforked version of the code, along with documentation, can be
 found at:
 http://bartellab.wi.mit.edu/softwareDocs/MiRscan3/Introduction.html
